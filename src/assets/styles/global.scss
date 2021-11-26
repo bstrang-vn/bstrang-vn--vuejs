@@ -1,0 +1,36 @@
+table {
+	width: 100%;
+    font-size: 12px;
+	border-collapse: collapse;
+	box-shadow: 4px 4px 8px #aaa;
+	thead {
+		text-align: center;
+	}
+	th,
+	td {
+		padding: 0.2rem 0.2rem;
+		border: 1px solid #d9d9d9;
+		line-height: 2;
+	}
+	tbody {
+		tr {
+			&:hover {
+				background-color: #e2e2e2;
+			}
+		}
+	}
+	p {
+		margin: 0;
+	}
+}
+svg {
+	vertical-align: baseline;
+}
+input[type='text'],
+input[type='number'],
+input[type='password'],
+input[type='select'],
+input[type='radio'],
+textarea {
+	font-size: 16px;
+}
