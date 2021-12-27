@@ -7,6 +7,7 @@
 			type="text"
 			class="input-filter"
 			placeholder="Search..."
+			:disabled="disabled"
 		/>
 		<div class="select-filter" v-if="isSearching">
 			<div
@@ -16,7 +17,9 @@
 				@click.prevent="handleSelectItem(index)"
 			>
 				<slot name="each" :item="item" :key="key" :index="index">
-					<div class="item-json">{{ index }} - {{ key }} - {{ JSON.stringify(item) }}</div>
+					<div class="item-json">
+						{{ index }} - {{ key }} - {{ JSON.stringify(item) }}
+					</div>
 				</slot>
 			</div>
 		</div>
@@ -33,6 +36,12 @@ export default {
 			type: [Array, Object],
 		},
 		filterData: Function,
+		disabled: {
+			type: Boolean,
+			default() {
+				return false
+			},
+		},
 	},
 	setup() {
 		return {

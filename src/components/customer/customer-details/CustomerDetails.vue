@@ -1,4 +1,5 @@
 <template>
+	<h1 class="title-content">Thông tin khách hàng</h1>
 	<div class="flex justify-between">
 		<div>
 			<div class="flex">
@@ -28,25 +29,10 @@
 			<div class="text-3xl">{{ customer.finance?.debt }}</div>
 		</div>
 		<div>
-			<a-button type="primary" @click="visiblePayDebt = true">
+			<a-button type="primary" @click="$refs.modalPayDebt.openModal(customer)">
 				Trả nợ
 			</a-button>
-			<a-modal
-				v-model:visible="visiblePayDebt"
-				@ok="startPayDebt"
-				:confirm-loading="loadingPayDebt"
-				title="Trả nợ"
-			>
-				<div class="flex items-center mb-2">
-					<div class="w-20 flex-none">Số tiền</div>
-					<a-input
-						v-model:value.number="numberPayDebt"
-						type="number"
-						addon-after=".000 vnđ"
-						class="flex-auto"
-					/>
-				</div>
-			</a-modal>
+			<ModalPayDebt ref="modalPayDebt" />
 		</div>
 	</div>
 	<div class="mt-4 mb-1 font-bold">Danh sách đơn hàng</div>
@@ -56,31 +42,24 @@
 				<th>#</th>
 				<th>Ngày</th>
 				<th>T.Toán</th>
-				<th>Đã trả</th>
 				<th>Tổng</th>
 				<th>Nợ</th>
 			</thead>
 			<tbody class="text-right">
-				<tr
-					v-if="
-						!customer.exportNoteList ||
-							Object.keys(customer.exportNoteList).length === 0
-					"
-				>
+				<tr v-if="exportNoteList.length === 0">
 					<td class="text-center" colspan="7">No data available in table</td>
 				</tr>
 				<tr
-					v-for="(noteData, noteID, noteIndex) in customer.exportNoteList"
+					v-for="(note, noteIndex) in exportNoteList"
 					:key="noteIndex"
-					@click="$router.push({ name: 'ExportNote Details', params: { id: noteID } })"
+					@dblclick="redirectExportNoteDetails(note.exportNoteID)"
 				>
 					<td class="text-center">{{ noteIndex + 1 }}</td>
-					<td>{{ formatDateTime(noteData.createdAt) }}</td>
-					<td class="text-left">{{ noteData.payment?.method }}</td>
-					<td>{{ noteData.payment?.alreadyPaid }}</td>
-					<td>{{ noteData.finance.revenue }}</td>
+					<td>{{ formatDateTime(note.createdAt) }}</td>
+					<td class="text-left">{{ note.payment?.method }}</td>
+					<td>{{ note.finance.revenue + note.finance.buyerPaysShip }}</td>
 					<td class="font-bold">
-						{{ noteData.finance.revenue - noteData.payment?.alreadyPaid }}
+						{{ note.finance.debt }}
 					</td>
 				</tr>
 			</tbody>
@@ -95,20 +74,25 @@
 				<th>Tiền trả</th>
 			</thead>
 			<tbody class="text-right">
-				<tr v-if="Object.keys(customer.finance?.payDebt || {}).length === 0">
+				<tr v-if="payDebtHistory.length == 0">
 					<td class="text-center" colspan="3">No data available in table</td>
 				</tr>
-				<tr v-for="(money, time, index) in customer.finance?.payDebt" :key="index">
+				<tr v-for="(history, index) in payDebtHistory" :key="index">
 					<td class="text-center">{{ index + 1 }}</td>
-					<td>{{ formatDateTime(Number(time)) }}</td>
-					<td>{{ money }}</td>
+					<td>{{ formatDateTime(history.time) }}</td>
+					<td>{{ history.money }}</td>
 				</tr>
 			</tbody>
 		</table>
 	</div>
 	<div class="flex justify-between mt-4">
 		<a-button @click="$router.go(-1)">Back</a-button>
-		<a-button @click="confirmDeleteCustomer" :loading="loadingDeleteCustomer" type="dashed">
+		<a-button
+			v-if="customer.exportNoteIDList?.length === 0"
+			@click="confirmDeleteCustomer"
+			:loading="loadingDeleteCustomer"
+			type="dashed"
+		>
 			Delete
 		</a-button>
 	</div>
@@ -119,41 +103,47 @@ import { ref, createVNode } from 'vue'
 import { useRoute } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
 import { ExclamationCircleOutlined } from '@ant-design/icons-vue'
-import { startRealtimeCustomer, addPayDebt, deleteCustomer } from '@/firebase/useCustomer'
-import ModalCustomerCreateModify from '@/components/common/ModalCustomerCreateModify.vue'
+import { startRealtimeCustomer, deleteCustomer } from '@/firebase/useCustomer'
+import { getExportNoteList } from '@/firebase/useExportNote'
+import ModalCustomerCreateModify from '@/components/common/ModalCreateModifyCustomer.vue'
+import ModalPayDebt from '@/components/customer/customer-details/ModalPayDebt.vue'
 import { MyFormatDateTime } from '@/utils/convert'
 
 export default {
-	components: { ModalCustomerCreateModify },
+	components: { ModalCustomerCreateModify, ModalPayDebt },
 	setup() {
 		const route = useRoute()
 		const realtimeCustomer = startRealtimeCustomer(route.params.id)
 		return {
 			customer: realtimeCustomer.data,
 			realtimeCustomer,
-			numberPayDebt: ref(0),
-			loadingPayDebt: ref(false),
-			visiblePayDebt: ref(false),
+			exportNoteList: ref([]),
+			payDebtHistory: ref([]),
 			loadingDeleteCustomer: ref(false),
 		}
 	},
 	unmounted() {
 		this.realtimeCustomer.unSubscribe()
 	},
-	methods: {
-		async startPayDebt() {
-			this.loadingPayDebt = true
-			try {
-				await addPayDebt(this.customer.customerID, this.numberPayDebt)
-				message.success(`Trả nợ thành công: ${this.numberPayDebt}`, 2)
-				this.visiblePayDebt = false
-			} catch (error) {
-				console.error(error)
-				message.error(error.toString(), 10)
-			} finally {
-				this.loadingPayDebt = false
-			}
+	watch: {
+		'customer.exportNoteIDList': {
+			async handler(after, before) {
+				this.exportNoteList = (await getExportNoteList(after)).reverse()
+			},
+			deep: true,
 		},
+		'customer.finance.payDebtHistory': {
+			async handler(after, before) {
+				this.payDebtHistory = after.sort((a, b) => {
+					if (a.time > b.time) return -1
+					if (a.time < b.time) return 1
+					return 0
+				})
+			},
+			deep: true,
+		},
+	},
+	methods: {
 		async startDeleteCustomer() {
 			this.loadingDeleteCustomer = true
 			try {
@@ -172,8 +162,7 @@ export default {
 			if (this.customer.exportNoteIDList.length > 0) {
 				this.$notification.open({
 					message: 'Lỗi !!!',
-					description:
-						'Đơn hàng của khách hàng này vẫn tồn tại. Không thể xóa khách hàng này',
+					description: 'Đơn hàng của khách hàng này vẫn tồn tại. Không thể xóa khách hàng này',
 					placement: 'topRight',
 					duration: 5,
 				})
@@ -187,6 +176,12 @@ export default {
 				onOk() {
 					that.startDeleteCustomer()
 				},
+			})
+		},
+		redirectExportNoteDetails(noteID) {
+			this.$router.push({
+				name: 'ExportNote Details',
+				params: { id: noteID },
 			})
 		},
 		formatDateTime(time) {

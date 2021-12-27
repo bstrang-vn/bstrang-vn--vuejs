@@ -1,4 +1,5 @@
 <template>
+	<h1 class="title-content">Thông tin nhà cung cấp</h1>
 	<div>
 		<div class="flex">
 			<div class="w-10">Tên</div>
@@ -32,18 +33,13 @@
 				<th>Tổng tiền</th>
 			</thead>
 			<tbody>
-				<tr
-					v-if="
-						!provider.importNoteList ||
-							Object.keys(provider.importNoteList).length === 0
-					"
-				>
-					<td class="text-center" colspan="4">No data available in table</td>
+				<tr v-if="importNoteList.length === 0">
+					<td class="text-center" colspan="7">No data available in table</td>
 				</tr>
 				<tr
-					v-for="(noteData, noteID, noteIndex) in provider.importNoteList"
+					v-for="(noteData, noteIndex) in importNoteList"
 					:key="noteIndex"
-					@click="$router.push({ name: 'ImportNote Details', params: { id: noteID } })"
+					@click="$router.push({ name: 'ImportNote Details', params: { id: noteData.noteID } })"
 				>
 					<td class="text-center">{{ noteIndex + 1 }}</td>
 					<td class="text-right">{{ formatDateTime(noteData.createdAt) }}</td>
@@ -54,7 +50,12 @@
 	</div>
 	<div class="flex justify-between mt-4">
 		<a-button @click="$router.go(-1)">Back</a-button>
-		<a-button @click="confirmDeleteProvider" :loading="loadingDeleteProvider" type="dashed">
+		<a-button
+			v-if="provider.importNoteIDList?.length === 0"
+			@click="confirmDeleteProvider"
+			:loading="loadingDeleteProvider"
+			type="dashed"
+		>
 			Delete
 		</a-button>
 	</div>
@@ -66,7 +67,8 @@ import { useRoute } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
 import { ExclamationCircleOutlined } from '@ant-design/icons-vue'
 import { startRealtimeProvider, deleteProvider } from '@/firebase/useProvider'
-import ModalProviderCreateModify from '@/components/common/ModalProviderCreateModify.vue'
+import { getImportNoteList } from '@/firebase/useImportNote'
+import ModalProviderCreateModify from '@/components/common/ModalCreateModifyProvider.vue'
 import { MyFormatDateTime } from '@/utils/convert'
 
 export default {
@@ -77,12 +79,20 @@ export default {
 		return {
 			provider: realtimeProvider.data,
 			realtimeProvider,
-			payDebtMoney: ref(0),
+			importNoteList: ref([]),
 			loadingDeleteProvider: ref(false),
 		}
 	},
 	unmounted() {
 		this.realtimeProvider.unSubscribe()
+	},
+	watch: {
+		'provider.importNoteIDList': {
+			async handler(after, before) {
+				this.importNoteList = (await getImportNoteList(after)).reverse()
+			},
+			deep: true,
+		},
 	},
 	methods: {
 		async startDeleteProvider() {
@@ -103,8 +113,7 @@ export default {
 			if (this.provider.importNoteIDList.length > 0) {
 				this.$notification.open({
 					message: 'Lỗi !!!',
-					description:
-						'Phiếu nhập hàng của nhà cung cấp này vẫn tồn tại. Không thể xóa nhà cung cấp này',
+					description: 'Phiếu nhập hàng của nhà cung cấp này vẫn tồn tại. Không thể xóa nhà cung cấp này',
 					placement: 'topRight',
 					duration: 5,
 				})

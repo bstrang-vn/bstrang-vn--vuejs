@@ -1,18 +1,18 @@
 const UTILS_GOODSTYPE = {
 	group: [
-		'Kem Chống Nắng',
-		'Tẩy Trang',
-		'Sữa Rửa Mặt',
-		'Tẩy Da Chết',
-		'Tonner',
-		'Serum',
 		'Đặc Trị',
 		'Kem Dưỡng',
+		'Kem Chống Nắng',
+		'Sữa Rửa Mặt',
+		'Tẩy Trang',
+		'Tẩy Da Chết',
+		'Toner',
+		'Serum',
 		'Sữa Tắm',
 		'Thuốc Viên',
 		'Khác',
 	],
-	unit: ['Chai', 'Lọ', 'Tuýp', 'Hộp', 'Ống', 'Cái', 'Túi', 'Khác'],
+	unit: ['Hộp', 'Chai', 'Tuýp', 'Lọ', 'Ống', 'Cái', 'Túi', 'Khác'],
 }
 
 const UTILS_EXPORTNOTES = {

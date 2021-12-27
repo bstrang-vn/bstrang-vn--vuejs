@@ -10,24 +10,13 @@
 			<th v-if="editable">Action</th>
 		</thead>
 		<tbody class="text-right">
-			<template
-				v-for="(batchList, goodsID, stockIndex) in importNote.stockIn"
-				:key="stockIndex"
-			>
+			<template v-for="({ goodsID, goodsName, batchList }, stockIndex) in stockList" :key="stockIndex">
 				<tr v-for="({ quantity }, batchKey, batchIndex) in batchList" :key="batchIndex">
-					<td
-						class="text-center"
-						v-if="batchIndex === 0"
-						:rowspan="Object.keys(batchList).length"
-					>
+					<td class="text-center" v-if="batchIndex === 0" :rowspan="Object.keys(batchList).length">
 						{{ stockIndex + 1 }}
 					</td>
-					<td
-						class="text-left"
-						v-if="batchIndex === 0"
-						:rowspan="Object.keys(batchList).length"
-					>
-						{{ goodsList[goodsID]?.goodsName }}
+					<td class="text-left" v-if="batchIndex === 0" :rowspan="Object.keys(batchList).length">
+						{{ goodsName }}
 					</td>
 					<td>{{ formatDateTime(Number(batchKey.split('-')[0])) }}</td>
 					<td>{{ batchKey.split('-')[1] }}</td>
@@ -40,10 +29,7 @@
 								twoToneColor="orange"
 								class="delete-row-goods"
 							/>
-							<DeleteTwoTone
-								@click="removeItem(goodsID, batchKey)"
-								twoToneColor="#f5222d"
-							/>
+							<DeleteTwoTone @click="removeItem(goodsID, batchKey)" twoToneColor="#f5222d" />
 						</div>
 					</td>
 				</tr>
@@ -66,7 +52,7 @@
 import { createVNode } from 'vue'
 import { EditTwoTone, DeleteTwoTone, ExclamationCircleOutlined } from '@ant-design/icons-vue'
 import { Modal } from 'ant-design-vue'
-import { goodsList } from '@/firebase/useWarehouse'
+import { goodsArray } from '@/firebase/useWarehouse'
 import { MyFormatDateTime } from '@/utils/convert'
 
 export default {
@@ -75,8 +61,20 @@ export default {
 		importNote: Object,
 		editable: Boolean,
 	},
-	setup() {
-		return { goodsList }
+	computed: {
+		stockList() {
+			return Object.entries(this.importNote.stockIn || {})
+				.map(([goodsID, batchList]) => ({
+					goodsID,
+					goodsName: goodsArray.find(goods => goods.goodsID === goodsID)?.goodsName,
+					batchList,
+				}))
+				.sort((a, b) => {
+					if (a.goodsName > b.goodsName) return 1
+					if (a.goodsName < b.goodsName) return -1
+					return 0
+				})
+		},
 	},
 	methods: {
 		removeItem(goodsID, batchKey) {

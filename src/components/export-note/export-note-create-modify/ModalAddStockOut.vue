@@ -10,15 +10,16 @@
 	>
 		<form>
 			<div class="flex items-center mb-2">
-				<div class="w-100px flex-none">Sản phẩm</div>
-				<InputSearchGoods
+				<div class="w-20 flex-none">Sản phẩm</div>
+				<InputFilterStockOut
 					v-model:searchText="goods.goodsName"
+					:disabled="!!isEditMode"
 					@selectItem="handleSelectGoods"
 					@searching="handleSearching"
 				/>
 			</div>
 			<div class="flex items-center mb-2">
-				<div class="w-100px flex-none"></div>
+				<div class="w-20 flex-none"></div>
 				<div class="flex-auto">
 					<div class="flex">
 						<div class="w-10">HSD</div>
@@ -33,15 +34,28 @@
 				</div>
 			</div>
 			<div class="flex items-center mb-2">
-				<div class="w-100px flex-none">Giá</div>
-				<a-radio-group class="flex-auto" v-model:value="expectedPrice">
-					<a-radio :value="goods.retailPrice">Lẻ : {{ goods.retailPrice }}</a-radio>
-					<a-radio :value="goods.wholesalePrice">Sỉ : {{ goods.wholesalePrice }}</a-radio>
-					<a-radio :value="goods.costPrice">Nhập : {{ goods.costPrice }}</a-radio>
+				<div class="w-20 flex-none">Số lượng</div>
+				<a-input v-model:value.number="quantity" type="number" :addon-after="goods.unit" class="flex-auto" />
+			</div>
+			<div class="flex items-center mb-2">
+				<div class="w-20 flex-none">Giá</div>
+				<a-radio-group v-model:value="expectedPrice" class="flex-col">
+					<div class="flex mb-1">
+						<div class="w-16">Nhập</div>
+						<a-radio :value="goods.costPrice">{{ goods.costPrice }}</a-radio>
+					</div>
+					<div class="flex mb-1">
+						<div class="w-16">Sỉ</div>
+						<a-radio :value="goods.wholesalePrice">{{ goods.wholesalePrice }}</a-radio>
+					</div>
+					<div class="flex">
+						<div class="w-16">Lẻ</div>
+						<a-radio :value="goods.retailPrice">{{ goods.retailPrice }}</a-radio>
+					</div>
 				</a-radio-group>
 			</div>
 			<div class="flex items-center mb-2">
-				<div class="w-100px flex-none">Giảm giá</div>
+				<div class="w-20 flex-none">Giảm giá</div>
 				<a-input class="flex-auto" v-model:value.number="discount.number" type="number" />
 				<a-select v-model:value="discount.type" style="font-size:16px">
 					<a-select-option value="vnd">.000</a-select-option>
@@ -49,20 +63,11 @@
 				</a-select>
 			</div>
 			<div class="flex items-center mb-2">
-				<div class="w-100px flex-none">Bán</div>
+				<div class="w-20 flex-none">Bán</div>
 				<div>{{ formatNumber(actualPrice) }}</div>
 			</div>
 			<div class="flex items-center mb-2">
-				<div class="w-100px flex-none">Số lượng</div>
-				<a-input
-					v-model:value.number="quantity"
-					type="number"
-					:addon-after="goods.unit"
-					class="flex-auto"
-				/>
-			</div>
-			<div class="flex items-center mb-2">
-				<div class="w-100px flex-none">Tổng</div>
+				<div class="w-20 flex-none">Tổng</div>
 				<div>{{ formatNumber(totalPrice) }}</div>
 			</div>
 		</form>
@@ -72,17 +77,16 @@
 <script>
 import { ref } from 'vue'
 import { message } from 'ant-design-vue'
-import InputSearchGoods from '@/components/common/InputSearchGoods.vue'
 import { MyFormatNumber, MyFormatDateTime } from '@/utils/convert'
-import { goodsList } from '@/firebase/useWarehouse'
+import { goodsArray } from '@/firebase/useWarehouse'
+import InputFilterStockOut from '@/components/export-note/export-note-create-modify/InputFilterStockOut.vue'
 
 export default {
-	components: { InputSearchGoods },
+	components: { InputFilterStockOut },
 	setup() {
 		return {
 			isEditMode: ref(''),
 			visibleModal: ref(false),
-			confirmModalLoading: ref(false),
 
 			goods: ref({
 				goodsID: '',
@@ -102,8 +106,7 @@ export default {
 				number: '',
 				type: 'vnd',
 			}),
-
-			goodsList,
+			goodsArray,
 		}
 	},
 	computed: {
@@ -123,7 +126,7 @@ export default {
 			this.goods.goodsName = infoGoods.goodsName || ''
 			this.goods.group = infoGoods.group || ''
 			this.goods.unit = infoGoods.unit || ''
-			this.goods.expiryDate = infoGoods.expiryDate
+			this.goods.expiryDate = Number(infoGoods.expiryDate)
 			this.goods.quantity = infoGoods.quantity || 0
 			this.goods.costPrice = infoGoods.costPrice || 0
 			this.goods.retailPrice = infoGoods.retailPrice || 0
@@ -135,17 +138,18 @@ export default {
 			this.discount.type = infoSell.discount?.type || 'vnd'
 		},
 		getGoodsByBatch(goodsID, expiryDate, costPrice) {
+			const findGoods = this.goodsArray.find(item => item.goodsID === goodsID)
 			const batch = `${expiryDate}-${costPrice}`
 			return {
 				goodsID,
-				goodsName: this.goodsList[goodsID].goodsName,
-				group: this.goodsList[goodsID].group,
-				unit: this.goodsList[goodsID].unit,
+				goodsName: findGoods.goodsName,
+				group: findGoods.group,
+				unit: findGoods.unit,
 				expiryDate,
 				costPrice,
-				quantity: this.goodsList[goodsID].stockAvail?.[batch]?.quantity || '',
-				retailPrice: this.goodsList[goodsID].retailPrice,
-				wholesalePrice: this.goodsList[goodsID].wholesalePrice,
+				quantity: findGoods.stockAvail?.[batch]?.quantity || '',
+				retailPrice: findGoods.retailPrice,
+				wholesalePrice: findGoods.wholesalePrice,
 			}
 		},
 		openModal({ infoGoods, infoSell, isEditMode } = {}) {
@@ -154,11 +158,7 @@ export default {
 			if (!infoGoods && !infoSell) return
 			this.setDataModal({
 				infoSell,
-				infoGoods: this.getGoodsByBatch(
-					infoGoods.goodsID,
-					infoGoods.expiryDate,
-					infoGoods.costPrice,
-				),
+				infoGoods: this.getGoodsByBatch(infoGoods.goodsID, infoGoods.expiryDate, infoGoods.costPrice),
 			})
 		},
 		refreshModal() {
@@ -168,10 +168,11 @@ export default {
 			this.setDataModal({ infoGoods: { goodsName: $event }, infoSell: {} })
 		},
 		handleSelectGoods({ goodsID, expiryDate, costPrice } = {}) {
+			const findGoods = this.goodsArray.find(item => item.goodsID === goodsID)
 			this.setDataModal({
 				infoGoods: this.getGoodsByBatch(goodsID, expiryDate, costPrice),
 				infoSell: {
-					expectedPrice: this.goodsList[goodsID].retailPrice,
+					expectedPrice: findGoods.retailPrice,
 				},
 			})
 		},
@@ -205,9 +206,7 @@ export default {
 				actualPrice: this.actualPrice,
 			}
 			this.$emit('actionStockOut', { isEditMode: this.isEditMode, stock })
-			message.success(
-				`Đã thêm ${this.goods.goodsName} với số lượng ${this.goods.quantity} vào phiếu`,
-			)
+			message.success(`Đã thêm ${this.goods.goodsName} với số lượng ${this.goods.quantity} vào phiếu`)
 			this.visibleModal = false
 		},
 
@@ -220,9 +219,3 @@ export default {
 	},
 }
 </script>
-
-<style lang="scss" scoped>
-.w-100px {
-	width: 100px;
-}
-</style>

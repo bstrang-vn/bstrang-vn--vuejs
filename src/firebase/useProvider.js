@@ -11,16 +11,23 @@ import {
 } from 'firebase/firestore'
 import { reactive, ref } from 'vue'
 
-const providerList = reactive({})
+const providerArray = reactive([])
 const db = getFirestore()
 const qr = query(collection(db, 'PROVIDER'))
 
 onSnapshot(qr, snapshot => {
 	snapshot.docChanges().forEach(change => {
-		if (change.type === 'added' || change.type === 'modified') {
-			providerList[change.doc.id] = change.doc.data()
+		const newProvider = {
+			providerID: change.doc.id,
+			...change.doc.data(),
+		}
+		const providerIndex = providerArray.findIndex(item => item.providerID === change.doc.id)
+		if (change.type === 'added') {
+			providerArray.push(newProvider)
+		} else if (change.type === 'modified') {
+			providerArray.splice(providerIndex, 1, newProvider)
 		} else if (change.type === 'removed') {
-			delete providerList[change.doc.id]
+			providerArray.splice(providerIndex, 1)
 		}
 	})
 })
@@ -29,22 +36,9 @@ const startRealtimeProvider = providerID => {
 	const data = ref({})
 	const unSubscribe = onSnapshot(doc(db, 'PROVIDER', providerID), async providerDoc => {
 		if (!providerDoc.exists()) return
-		const { importNoteIDList } = providerDoc.data()
-
-		const getImportNoteList = importNoteIDList.map(noteID =>
-			getDoc(doc(db, 'IMPORTNOTE', noteID)),
-		)
-		const importNoteSnapList = await Promise.all(getImportNoteList)
-
-		const importNoteList = {}
-		importNoteSnapList.forEach(noteSnap => {
-			importNoteList[noteSnap.id] = noteSnap.data()
-		})
-
 		data.value = {
 			providerID,
 			...providerDoc.data(),
-			importNoteList,
 		}
 	})
 	return { data, unSubscribe }
@@ -100,7 +94,7 @@ const deleteProvider = async providerID => {
 }
 
 export {
-	providerList,
+	providerArray,
 	startRealtimeProvider,
 	addProvider,
 	deleteProvider,

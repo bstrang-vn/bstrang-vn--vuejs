@@ -1,4 +1,9 @@
 <template>
+	<h1 class="title-content">
+		{{ $route.params.mode === 'create' ? 'Tạo Phiếu Nhập Hàng' : '' }}
+		{{ $route.params.mode === 'edit' ? 'Sửa Phiếu Nhập Hàng' : '' }}
+		{{ $route.params.mode === 'copy' ? 'Copy Phiếu Nhập Hàng' : '' }}
+	</h1>
 	<div class="flex items-center mb-2">
 		<div class="w-16 flex-none">Nguồn:</div>
 		<InputSearchProvider v-model:provider="importNote.provider" class="flex-auto" />
@@ -29,7 +34,10 @@
 			class="flex-auto"
 		></a-input>
 	</div>
-
+	<div class="flex items-center mb-4">
+		<div class="w-16 flex-none">Ghi chú</div>
+		<a-textarea v-model:value="importNote.other" placeholder="..." :rows="1" />
+	</div>
 	<div class="flex justify-between mt-4">
 		<a-button @click="$router.back()">
 			Back
@@ -60,12 +68,8 @@ import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
-import { goodsList } from '@/firebase/useWarehouse'
-import {
-	startRealtimeImportNote,
-	addImportNotePending,
-	updateImportNotePending,
-} from '@/firebase/useImportNote'
+import { goodsArray } from '@/firebase/useWarehouse'
+import { getImportNoteById, addImportNotePending, updateImportNotePending } from '@/firebase/useImportNote'
 import InputSearchProvider from '@/components/common/InputSearchProvider.vue'
 import ImportNoteTableGoods from '@/components/import-note/ImportNoteTableGoods.vue'
 import ModalAddStockIn from '@/components/import-note/import-note-create-modify/ModalAddStockIn.vue'
@@ -80,19 +84,35 @@ export default {
 	},
 	setup() {
 		const route = useRoute()
-		const realtimeImportNote = startRealtimeImportNote(route.params.id)
-		return {
-			goodsList,
-			realtimeImportNote,
-			importNote: realtimeImportNote.data,
+		const importNote = ref({
+			importNoteID: '',
+			provider: {
+				providerID: '',
+				providerName: '',
+			},
+			stockIn: {},
+			shipping: { cost: '' },
+			finance: { totalMoney: '' },
+			other: '',
+			status: '',
+		})
+		if (route.params.id) {
+			getImportNoteById(route.params.id)
+				.then(res => {
+					importNote.value = res
+					if (route.params.mode === 'copy') importNote.value.importNoteID = ''
+				})
+				.catch(err => console.log(err))
+		}
 
+		return {
+			goodsArray,
+			importNote,
 			loadingActionImportNote: ref(false),
 			UTILS_IMPORTNOTES,
 		}
 	},
-	unmounted() {
-		this.realtimeImportNote.unSubscribe()
-	},
+
 	computed: {
 		totalMoney() {
 			const tottalPrice = Object.values(this.importNote.stockIn).reduce((accGoods, goods) => {
@@ -112,6 +132,7 @@ export default {
 	},
 	methods: {
 		editStockIn({ goodsID, batchKey }) {
+			const findGoods = this.goodsArray.find(item => item.goodsID === goodsID)
 			this.$refs.modalAddStockIn.openModal({
 				infoGoods: {
 					goodsID,
@@ -119,10 +140,10 @@ export default {
 					costPrice: Number(batchKey.split('-')[1]) || 'NaN',
 					quantity: this.importNote.stockIn[goodsID][batchKey].quantity,
 
-					goodsName: this.goodsList[goodsID].goodsName,
-					group: this.goodsList[goodsID].group,
-					retailPrice: this.goodsList[goodsID].retailPrice,
-					wholesalePrice: this.goodsList[goodsID].wholesalePrice,
+					goodsName: findGoods.goodsName,
+					group: findGoods.group,
+					retailPrice: findGoods.retailPrice,
+					wholesalePrice: findGoods.wholesalePrice,
 				},
 				isEditMode: batchKey,
 			})
@@ -135,7 +156,7 @@ export default {
 			if (isEditMode) delete this.importNote.stockIn[goodsID][isEditMode]
 
 			if (!this.importNote.stockIn[goodsID]) this.importNote.stockIn[goodsID] = {}
-			const batch = `${expiryDate}-${costPrice}`
+			const batch = `${expiryDate || 'NaN'}-${costPrice}`
 			if (!this.importNote.stockIn[goodsID][batch]) {
 				this.importNote.stockIn[goodsID][batch] = { quantity: 0 }
 			}
@@ -177,10 +198,7 @@ export default {
 		async startUpdateImportNote() {
 			try {
 				this.loadingActionImportNote = true
-				const noteID = await updateImportNotePending(
-					this.importNote.importNoteID,
-					this.importNote,
-				)
+				const noteID = await updateImportNotePending(this.importNote.importNoteID, this.importNote)
 				message.success('Cập nhật phiếu nhập hàng thành công !!!', 2)
 				this.$router.push({ name: 'ImportNote Details', params: { id: noteID } })
 			} catch (error) {

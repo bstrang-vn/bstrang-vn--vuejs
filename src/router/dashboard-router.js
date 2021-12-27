@@ -47,7 +47,7 @@ const dashboardChildren = [
 				meta: {
 					breadcrumbName: 'Details',
 				},
-				component: () => import('@/components/customer/CustomerDetails.vue'),
+				component: () => import('@/components/customer/customer-details/CustomerDetails.vue'),
 			},
 		],
 	},

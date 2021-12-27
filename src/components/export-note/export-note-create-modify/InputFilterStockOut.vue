@@ -2,16 +2,19 @@
 	<div class="w-full relative">
 		<InputAutoComplete
 			:searchText="searchText"
-			:dataSource="convertGoodList"
+			:dataSource="convertGoodArray"
 			:filterData="logicFilter"
+			:disabled="disabled"
 			@searching="handleSearching"
 			@selectItem="handleSelectItem"
 		>
-			<template v-slot:each="{ item: { goodsName, unit, quantity }, key: batch }">
+			<template
+				v-slot:each="{ item: { goodsName, unit, quantity, expiryDate, retailPrice } }"
+			>
 				<p class="font-bold m-0">{{ goodsName }}</p>
 				<p class="m-0">
-					{{ formatDateTime(Number(batch.split('-')[1])) }}
-					- {{ formatNumber(batch.split('-')[2]) }}/{{ unit }} - {{ quantity }}
+					{{ formatDateTime(Number(expiryDate)) }}
+					- {{ formatNumber(retailPrice || 0) }}/{{ unit }} - {{ quantity }}
 				</p>
 			</template>
 		</InputAutoComplete>
@@ -25,36 +28,44 @@
 <script>
 import { ref } from 'vue'
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons-vue'
-import { goodsList } from '@/firebase/useWarehouse'
+import { goodsArray } from '@/firebase/useWarehouse'
 import InputAutoComplete from '@/components/common/InputAutoComplete.vue'
 import { MyFormatDateTime, MyFormatNumber, MySearch } from '@/utils/convert'
 
 export default {
-	props: ['searchText'],
+	props: {
+		searchText: String,
+		disabled: {
+			type: Boolean,
+			default() {
+				return false
+			},
+		},
+	},
 	components: { InputAutoComplete, CheckCircleOutlined, CloseCircleOutlined },
 	setup() {
-		return {
-			goodsID: ref(''),
-			goodsList,
-		}
+		return { goodsArray, goodsID: ref('') }
 	},
 	computed: {
-		convertGoodList() {
-			const data = {}
-			Object.entries(this.goodsList).forEach(([goodsID, { stockAvail, ...goodsData }]) => {
-				if (Object.keys(stockAvail).length === 0) {
-					data[`${goodsID}-NaN-0`] = {
-						...goodsData,
-						quantity: 0,
-					}
-				} else {
+		convertGoodArray() {
+			const data = []
+			this.goodsArray.forEach(({ stockAvail, ...goodsData }) => {
+				if (Object.keys(stockAvail).length === 0) data.push({ ...goodsData })
+				else {
 					Object.entries(stockAvail).forEach(([batch, q]) => {
-						data[`${goodsID}-${batch}`] = {
+						data.push({
+							expiryDate: batch.split('-')[0],
+							costPrice: batch.split('-')[1],
+							quantity: q.quantity,
 							...goodsData,
-							quantity: q ? q.quantity : 0,
-						}
+						})
 					})
 				}
+			})
+			data.sort((a, b) => {
+				if (a.goodsName > b.goodsName) return 1
+				if (a.goodsName < b.goodsName) return -1
+				return 0
 			})
 			return data
 		},
@@ -68,11 +79,11 @@ export default {
 		handleSelectItem({ key, value }) {
 			this.$emit('update:searchText', value.goodsName)
 			this.$emit('selectItem', {
-				goodsID: key.split('-')[0] || '',
-				expiryDate: Number(key.split('-')[1]) || 'NaN',
-				costPrice: Number(key.split('-')[2]) || 'NaN',
+				goodsID: value.goodsID,
+				expiryDate: value.expiryDate,
+				costPrice: value.costPrice,
 			})
-			this.goodsID = key.split('-')[0] || ''
+			this.goodsID = value.goodsID
 		},
 		logicFilter(item, key) {
 			return MySearch(item.goodsName, this.searchText)

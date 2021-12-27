@@ -3,72 +3,86 @@ import {
 	onSnapshot,
 	collection,
 	doc,
-	addDoc,
+	getDoc,
+	getDocs,
 	setDoc,
+	updateDoc,
 	deleteDoc,
 	query,
 	where,
 	orderBy,
-	limit,
 	runTransaction,
 	increment,
 	arrayUnion,
 	arrayRemove,
 } from 'firebase/firestore'
 import { ref, reactive } from 'vue'
+import { MyFormatDateTime } from '@/utils/convert'
 
-const nowTime = new Date().getTime()
-const importNoteList = reactive({})
+const getYear = new Date().getFullYear()
+const getMonth = new Date().getMonth() + 1
+const firstDayOfMonth = new Date(getYear + '-' + getMonth).getTime()
+const importNoteArray = reactive([])
 const db = getFirestore()
-const qr = query(
-	collection(db, 'IMPORTNOTE'),
-	where('updatedAt', '>', nowTime - 7 * 24 * 60 * 60 * 1000),
-	orderBy('updatedAt', 'asc'),
-	limit(10),
-)
+const qr = query(collection(db, 'IMPORTNOTE'), where('updatedAt', '>', firstDayOfMonth), orderBy('updatedAt', 'asc'))
 
 onSnapshot(qr, snapshot => {
 	snapshot.docChanges().forEach(change => {
-		if (change.type === 'added' || change.type === 'modified') {
-			importNoteList[change.doc.id] = change.doc.data()
+		const newNote = {
+			...change.doc.data(),
+			importNoteID: change.doc.id,
 		}
-		if (change.type === 'removed') {
-			delete importNoteList[change.doc.id]
+		const noteIndex = importNoteArray.findIndex(item => item.importNoteID === change.doc.id)
+		if (change.type === 'added') {
+			importNoteArray.unshift(newNote)
+		} else if (change.type === 'modified') {
+			importNoteArray.splice(noteIndex, 1, newNote)
+		} else if (change.type === 'removed') {
+			importNoteArray.splice(noteIndex, 1)
 		}
 	})
 })
 
 const startRealtimeImportNote = importNoteID => {
-	const data = ref({
-		importNoteID: '',
-		provider: {
-			providerID: '',
-			providerName: '',
-		},
-		stockIn: {},
-		shipping: { cost: '' },
-		finance: { totalMoney: '' },
-		status: '',
+	const data = ref({})
+	const unSubscribe = onSnapshot(doc(db, 'IMPORTNOTE', importNoteID), async noteDoc => {
+		if (!noteDoc.exists()) return
+		data.value = {
+			...noteDoc.data(),
+			importNoteID,
+		}
 	})
-	let unSubscribe = () => {}
-	if (importNoteID) {
-		unSubscribe = onSnapshot(doc(db, 'IMPORTNOTE', importNoteID), async noteDoc => {
-			if (!noteDoc.exists()) return
-			data.value = {
-				importNoteID,
-				...noteDoc.data(),
-			}
-		})
-	}
 	return { data, unSubscribe }
 }
 
+const getImportNoteById = async noteID => {
+	if (!noteID) throw new Error('ID must not be empty')
+	const noteRef = doc(db, 'IMPORTNOTE', noteID)
+	const noteSnap = await getDoc(noteRef)
+	if (!noteSnap.exists()) throw new Error('ImportNote not found !!!')
+	return {
+		...noteSnap.data(),
+		importNoteID: noteSnap.id,
+	}
+}
+
+const getImportNoteList = async noteIDList => {
+	const queryImportNoteList = noteIDList.map(noteID => getDoc(doc(db, 'IMPORTNOTE', noteID)))
+	const importNoteSnapList = await Promise.all(queryImportNoteList)
+	return importNoteSnapList.map(noteSnap => ({
+		...noteSnap.data(),
+		importNoteID: noteSnap.id,
+	}))
+}
+
 const addImportNotePending = async noteData => {
-	const noteRef = await addDoc(collection(db, 'IMPORTNOTE'), {
-		provider: noteData.provider,
-		stockIn: noteData.stockIn,
-		shipping: noteData.shipping,
-		finance: noteData.finance,
+	const noteID = MyFormatDateTime(new Date(), 'YY-MM-DD-HH-mm-ss')
+	const noteRef = doc(db, 'IMPORTNOTE', noteID)
+	const noteSnap = await getDoc(noteRef)
+	if (noteSnap.exists()) throw new Error('Phiếu nhập này đã tồn tại')
+
+	await setDoc(noteRef, {
+		...noteData,
 		status: 'Pending',
 
 		createdAt: new Date().getTime(),
@@ -81,6 +95,7 @@ const addImportNotePending = async noteData => {
 
 const processImportNote = async noteID => {
 	await runTransaction(db, async transaction => {
+		// transaction get import note
 		const importNoteRef = doc(db, 'IMPORTNOTE', noteID)
 		const noteDoc = await transaction.get(importNoteRef)
 		if (!noteDoc.exists()) throw new Error('Document not exists')
@@ -163,18 +178,14 @@ const refundImportNote = async noteID => {
 }
 
 const updateImportNotePending = async (noteID, noteData) => {
-	if (noteData.status !== 'Pending') {
-		throw new Error('You only can update import note in pending status')
-	}
+	if (!noteID) throw new Error('ID must not be empty')
+	const noteRef = doc(db, 'IMPORTNOTE', noteID)
+	const noteSnap = await getDoc(noteRef)
+	if (!noteSnap.exists()) throw new Error('ImportNote not found !!!')
+	if (noteSnap.data().status !== 'Pending') throw new Error('Notes is not in pending status')
 
-	const importNoteRef = doc(db, 'IMPORTNOTE', noteID)
-	await setDoc(importNoteRef, {
-		provider: noteData.provider,
-		stockIn: noteData.stockIn,
-		shipping: noteData.shipping,
-		finance: noteData.finance,
-		status: 'Pending',
-
+	await updateDoc(noteRef, {
+		...noteData,
 		updatedAt: new Date().getTime(),
 	})
 	return noteID
@@ -185,8 +196,10 @@ const deleteImportNote = async noteID => {
 }
 
 export {
-	importNoteList,
+	importNoteArray,
 	startRealtimeImportNote,
+	getImportNoteById,
+	getImportNoteList,
 	addImportNotePending,
 	processImportNote,
 	refundImportNote,

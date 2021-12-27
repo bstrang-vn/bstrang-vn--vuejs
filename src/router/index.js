@@ -1,6 +1,5 @@
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../views/Home.vue'
 import dashboardChildren from './dashboard-router'
 
 const auth = getAuth()
@@ -15,7 +14,7 @@ const routes = [
 	{
 		path: '/',
 		name: 'Home',
-		component: Home,
+		redirect: { name: 'Goods List' },
 	},
 	{
 		path: '/dashboard',
@@ -23,7 +22,8 @@ const routes = [
 		meta: {
 			breadcrumbName: 'Dashboard',
 		},
-		component: () => import(/* webpackChunkName: "dashboard" */ '../layouts/dashboard-layout/Dashboard.vue'),
+		component: () =>
+			import(/* webpackChunkName: "dashboard" */ '../layouts/dashboard-layout/Dashboard.vue'),
 		beforeEnter: requireAuth,
 		children: dashboardChildren,
 	},
@@ -33,7 +33,8 @@ const routes = [
 		meta: {
 			breadcrumbName: 'Store',
 		},
-		component: () => import(/* webpackChunkName: "dashboard" */ '../layouts/dashboard-layout/Dashboard.vue'),
+		component: () =>
+			import(/* webpackChunkName: "dashboard" */ '../layouts/dashboard-layout/Dashboard.vue'),
 	},
 	{
 		path: '/register',

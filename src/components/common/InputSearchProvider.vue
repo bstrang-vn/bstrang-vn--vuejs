@@ -3,7 +3,7 @@
 		<div class="flex-auto relative">
 			<InputAutoComplete
 				:searchText="provider.providerName"
-				:dataSource="providerList"
+				:dataSource="providerArray"
 				:filterData="logicFilter"
 				@searching="handleSearching"
 				@selectItem="handleSelectItem"
@@ -29,8 +29,8 @@
 <script>
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons-vue'
 import InputAutoComplete from '@/components/common/InputAutoComplete.vue'
-import ModalProviderCreateModify from '@/components/common/ModalProviderCreateModify.vue'
-import { providerList } from '@/firebase/useProvider'
+import ModalProviderCreateModify from '@/components/common/ModalCreateModifyProvider.vue'
+import { providerArray } from '@/firebase/useProvider'
 import { MySearch } from '@/utils/convert'
 
 export default {
@@ -38,7 +38,7 @@ export default {
 	components: { InputAutoComplete, ModalProviderCreateModify, CheckCircleOutlined, CloseCircleOutlined },
 	setup() {
 		return {
-			providerList,
+			providerArray,
 		}
 	},
 	methods: {
@@ -50,7 +50,7 @@ export default {
 		},
 		handleSelectItem({ key, value }) {
 			this.$emit('update:provider', {
-				providerID: key,
+				providerID: value.providerID,
 				providerName: value.providerName,
 			})
 		},

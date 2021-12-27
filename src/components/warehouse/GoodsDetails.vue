@@ -1,23 +1,35 @@
 <template>
-	<div class="flex">
-		<div class="w-150px">Tên:</div>
-		<div class="font-bold">{{ goods.goodsName }}</div>
-	</div>
-	<div class="flex">
-		<div class="w-150px">Nhóm:</div>
-		<div>{{ goods.group }}</div>
-	</div>
-	<div class="flex">
-		<div class="w-150px">Đơn vị:</div>
-		<div>{{ goods.unit }}</div>
-	</div>
-	<div class="flex">
-		<div class="w-150px">Sỉ:</div>
-		<div>{{ goods.wholesalePrice }}</div>
-	</div>
-	<div class="flex">
-		<div class="w-150px">Lẻ:</div>
-		<div>{{ goods.retailPrice }}</div>
+	<h1 class="title-content">Thông tin sản phẩm</h1>
+	<div>
+		<div class="flex">
+			<div class="w-20">Tên</div>
+			<div class="w-8">:</div>
+			<div class="font-bold">{{ goods.goodsName }}</div>
+		</div>
+		<div class="flex">
+			<div class="w-20">Nhóm</div>
+			<div class="w-8">:</div>
+			<div>{{ goods.group }}</div>
+		</div>
+		<div class="flex">
+			<div class="w-20">Đơn vị</div>
+			<div class="w-8">:</div>
+			<div>{{ goods.unit }}</div>
+		</div>
+		<div class="flex">
+			<div class="w-20">Sỉ</div>
+			<div class="w-8">:</div>
+			<div>{{ goods.wholesalePrice }}</div>
+		</div>
+		<div class="flex">
+			<div class="w-20">Lẻ</div>
+			<div class="w-8">:</div>
+			<div>{{ goods.retailPrice }}</div>
+		</div>
+		<div class="mt-2">
+			<a-button @click="$refs.modalCreateModifyGoods.openModal(goods.goodsID)">Edit</a-button>
+			<ModalCreateModifyGoods ref="modalCreateModifyGoods" />
+		</div>
 	</div>
 	<div class="mt-4 font-bold">Hiện có trong tủ:</div>
 	<div class="wrapper-table">
@@ -169,9 +181,11 @@ import { useRoute } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import { ExclamationCircleOutlined } from '@ant-design/icons-vue'
 import { startRealtimeGoods, deleteGoods } from '@/firebase/useWarehouse'
+import ModalCreateModifyGoods from '@/components/common/ModalCreateModifyGoods.vue'
 import { MyFormatDateTime } from '@/utils/convert'
 
 export default {
+	components: { ModalCreateModifyGoods },
 	setup() {
 		const route = useRoute()
 		const realtimeGoods = startRealtimeGoods(route.params.id)
@@ -240,9 +254,3 @@ export default {
 	},
 }
 </script>
-
-<style lang="scss" scoped>
-.w-150px {
-	width: 150px;
-}
-</style>

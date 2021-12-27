@@ -37,9 +37,8 @@ export default {
 		Content,
 	},
 	setup() {
-		const openSideDrawer = ref(false)
 		return {
-			openSideDrawer,
+			openSideDrawer: ref(false),
 		}
 	},
 }
@@ -54,9 +53,12 @@ export default {
 		}
 	}
 	.ant-layout-content {
-		margin: 0.5rem;
-		padding: 1rem;
+		padding: 0.5rem;
 		background-color: #fff;
+		@media screen and (min-width: 768px) {
+            padding: 1rem;
+			margin: 0.5rem;
+		}
 	}
 }
 

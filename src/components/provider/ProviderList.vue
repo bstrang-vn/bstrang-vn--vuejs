@@ -1,12 +1,17 @@
 <template>
-	<div class="flex justify-end mb-2">
-		<a-button type="primary" @click="$refs.modalProviderCreateModify.openModal()">
+	<h1 class="title-content">Danh sách nhà cung cấp</h1>
+	<div class="flex justify-between mb-2">
+		<div class="input-text">
+			<input :value="searchText" @input="handleSearchText" type="text" placeholder="Search..." />
+		</div>
+		<a-button type="primary" @click="$refs.modalCreateModifyProvider.openModal()">
 			<template #icon>
 				<PlusOutlined />
 			</template>
 			Add Provider
 		</a-button>
 	</div>
+	<ModalCreateModifyProvider ref="modalCreateModifyProvider" />
 	<table class="table">
 		<thead>
 			<th>#</th>
@@ -15,13 +20,13 @@
 			<th>Adress</th>
 		</thead>
 		<tbody>
-			<tr v-if="Object.keys(providerList).length === 0">
+			<tr v-if="providerFilter.length === 0">
 				<td colspan="5" style="text-align:center">No data available in table</td>
 			</tr>
 			<tr
-				v-for="(provider, providerID, index) in providerList"
+				v-for="(provider, index) in providerFilter"
 				:key="index"
-				@click="$router.push({ name: 'Provider Details', params: { id: providerID } })"
+				@dblclick="$router.push({ name: 'Provider Details', params: { id: provider.providerID } })"
 			>
 				<td>{{ index + 1 }}</td>
 				<td>{{ provider.providerName }}</td>
@@ -37,24 +42,42 @@
 </template>
 
 <script>
+import { ref } from 'vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { providerList, deleteProvider } from '@/firebase/useProvider'
+import { providerArray } from '@/firebase/useProvider'
+import ModalCreateModifyProvider from '@/components/common/ModalCreateModifyProvider.vue'
+import { MySearch } from '@/utils/convert'
 
 export default {
-	components: { PlusOutlined },
+	components: { ModalCreateModifyProvider, PlusOutlined },
 	setup() {
-		return { providerList }
+		return {
+			providerArray,
+			searchText: ref(''),
+		}
+	},
+	computed: {
+		providerFilter() {
+			return this.providerArray
+				.filter(provider => MySearch(provider.providerName, this.searchText))
+				.sort((a, b) => {
+					if (a.providerName > b.providerName) return 1
+					if (a.providerName < b.providerName) return -1
+					return 0
+				})
+		},
 	},
 	methods: {
-		async startDeleteProvider(providerID) {
-			try {
-				await deleteProvider(providerID)
-				message.success('Delete Provider success !!!', 2)
-			} catch (error) {
-				message.error(error.toString(), 10)
-			}
+		handleSearchText(e) {
+			this.searchText = e.target.value
 		},
 	},
 }
 </script>
+
+<style lang="scss" scoped>
+.input-text {
+	width: 400px;
+	max-width: 50%;
+}
+</style>

@@ -1,23 +1,28 @@
 <template>
+	<h1 class="title-content">Thông tin phiếu nhập hàng</h1>
 	<div class="flex items-center mb-2">
-		<div class="flex-none w-20">Nguồn:</div>
+		<div class="flex-none w-20">Nguồn</div>
+		<div class="w-3">:</div>
 		<div class="font-bold">{{ importNote.provider?.providerName }}</div>
 	</div>
 	<div class="flex items-center mb-2">
-		<div class="flex-none w-20">Status:</div>
+		<div class="flex-none w-20">Status</div>
+		<div class="w-3">:</div>
 		<a-tag :color="importNote.status === 'Pending' ? 'orange' : '#87d068'">
 			{{ importNote.status }}
 		</a-tag>
 	</div>
+	<div class="flex items-center mb-2">
+		<div class="flex-none w-20">Ngày</div>
+		<div class="w-3">:</div>
+		<div>{{ formatDateTime(importNote.updatedAt) }}</div>
+	</div>
+	<div class="flex items-center mb-2">
+		<div class="flex-none w-20">Ghi chú</div>
+		<div class="w-3">:</div>
+		<div>{{ importNote.other }}</div>
+	</div>
 	<div class="flex justify-end mb-2">
-		<a-button
-			v-if="importNote.status === 'Pending'"
-			@click="confirmDeleteImportNote"
-			:loading="loadingDeleteImportNote"
-			type="dashed"
-		>
-			Xóa phiếu
-		</a-button>
 		<a-button
 			v-if="importNote.status === 'Success'"
 			@click="confirmRefundImportNote"
@@ -26,36 +31,27 @@
 		>
 			Hoàn trả phiếu
 		</a-button>
+		<div v-if="importNote.status === 'Pending'" class="flex">
+			<a-button @click="redirectImportNoteEdit" type="dashed" class="mr-2">Sửa</a-button>
+			<a-button @click="confirmDeleteImportNote" :loading="loadingDeleteImportNote" type="dashed">
+				Xóa phiếu
+			</a-button>
+		</div>
 	</div>
-	<div class="wrapper-table mb-4">
+	<div class="mb-4">
 		<ImportNoteTableGoods :importNote="importNote" />
 	</div>
 	<div class="flex justify-between mb-8">
-		<div>
-			<a-button @click="$router.back()">Back</a-button>
-		</div>
-		<div v-if="importNote.status === 'Pending'">
-			<a-button
-				@click="
-					$router.push({
-						name: 'ImportNote Create Modify',
-						params: { id: importNote.importNoteID },
-					})
-				"
-				danger
-				class="ml-2"
-			>
-				Sửa phiếu
-			</a-button>
-			<a-button
-				:loading="loadingProcessImportNote"
-				@click="startProcessImportNote(importNote.importNoteID)"
-				type="primary"
-				class="ml-2"
-			>
-				Nhập thuốc
-			</a-button>
-		</div>
+		<a-button @click="$router.back()">Back</a-button>
+		<a-button
+			v-if="importNote.status === 'Pending'"
+			:loading="loadingProcessImportNote"
+			@click="startProcessImportNote(importNote.importNoteID)"
+			type="primary"
+			class="ml-2"
+		>
+			Nhập thuốc
+		</a-button>
 	</div>
 </template>
 
@@ -70,8 +66,8 @@ import {
 	refundImportNote,
 	processImportNote,
 } from '@/firebase/useImportNote'
-import { goodsList } from '@/firebase/useWarehouse'
 import ImportNoteTableGoods from '@/components/import-note/ImportNoteTableGoods.vue'
+import { MyFormatDateTime } from '@/utils/convert'
 
 export default {
 	components: { ImportNoteTableGoods },
@@ -82,7 +78,7 @@ export default {
 		return {
 			importNote: realtimeImportNote.data,
 			realtimeImportNote,
-			goodsList,
+
 			loadingProcessImportNote: ref(false),
 			loadingRefundImportNote: ref(false),
 			loadingDeleteImportNote: ref(false),
@@ -130,6 +126,12 @@ export default {
 				this.loadingDeleteImportNote = false
 			}
 		},
+		redirectImportNoteEdit() {
+			this.$router.push({
+				name: 'ImportNote Create Modify',
+				params: { id: this.importNote.importNoteID, mode: 'edit' },
+			})
+		},
 		confirmDeleteImportNote() {
 			const that = this
 			Modal.confirm({
@@ -151,6 +153,9 @@ export default {
 					that.startRefundImportNote(that.importNote.importNoteID)
 				},
 			})
+		},
+		formatDateTime(str) {
+			return MyFormatDateTime(str, 'DD/MM/YYYY')
 		},
 	},
 }

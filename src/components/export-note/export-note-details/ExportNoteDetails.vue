@@ -1,5 +1,6 @@
 <template>
-	<div class="flex items-center">
+	<h1 class="title-content">Thông tin đơn hàng</h1>
+	<div class="flex items-center mb-2">
 		<div class="flex-none w-20">Khách hàng</div>
 		<div class="w-3">:</div>
 		<div class="font-bold">{{ exportNote.customer?.customerName }}</div>
@@ -11,25 +12,36 @@
 			{{ exportNote.status }}
 		</a-tag>
 	</div>
-	<ExportNoteInvoices :exportNote="exportNote" ref="exportNoteInvoices" />
-	<div class="flex justify-between mb-2">
-		<a-button @click="$refs.exportNoteInvoices.openModal(exportNote)">Hóa Đơn</a-button>
+	<div class="flex items-center mb-2">
+		<div class="flex-none w-20">Ngày</div>
+		<div class="w-3">:</div>
+		<div>{{ formatDateTime(exportNote.updatedAt) }}</div>
+	</div>
+	<div class="flex items-center mb-2">
+		<div class="flex-none w-20">Ghi chú</div>
+		<div class="w-3">:</div>
+		<div>{{ exportNote.other }}</div>
+	</div>
+	<ModalInvoices :exportNote="exportNote" ref="modalInvoices" />
+	<div class="flex mb-2">
+		<a-button @click="$refs.modalInvoices.openModal(exportNote)" class="mr-auto">
+			Hóa Đơn
+		</a-button>
 		<a-button
 			v-if="exportNote.status === 'Success'"
 			@click="confirmRefundExportNote"
 			:loading="loadingRefundExportNote"
 			type="dashed"
 		>
-			Hoàn trả đơn hàng
+			Hoàn trả
 		</a-button>
-		<a-button
-			v-if="exportNote.status === 'Pending'"
-			@click="confirmDeleteExportNote"
-			:loading="loadingDeleteExportNote"
-			type="dashed"
-		>
-			Xóa đơn hàng
-		</a-button>
+		<div v-if="exportNote.status === 'Pending'" class="flex">
+			<a-button @click="redirectExportNoteEdit" type="dashed" class="mr-2">Sửa</a-button>
+			<a-button @click="confirmDeleteExportNote" :loading="loadingDeleteExportNote" type="dashed">
+				Xóa
+			</a-button>
+		</div>
+		<a-button @click="redirectExportNoteCopy" class="ml-2">Copy Đơn</a-button>
 	</div>
 
 	<div class="mb-2">
@@ -38,35 +50,13 @@
 
 	<div class="flex justify-between">
 		<a-button @click="$router.go(-1)">Back</a-button>
-		<div v-if="exportNote.status === 'Pending'">
-			<a-button
-				@click="
-					$router.push({
-						name: 'ExportNote Create Modify',
-						params: { id: exportNote.exportNoteID },
-					})
-				"
-				danger
-			>
-				Sửa đơn hàng
-			</a-button>
-			<a-button
-				@click="startProcessExportNote(exportNote.exportNoteID)"
-				type="primary"
-				class="ml-2"
-			>
-				Gửi hàng
+		<div v-if="exportNote.status === 'Pending'" class="flex">
+			<a-button @click="startProcessExportNote" type="primary" class="mr-2">
+				Gửi Hàng
 			</a-button>
 		</div>
-		<div
-			v-if="
-				exportNote.status === 'Success' &&
-					exportNote.payment?.alreadyPaid !== exportNote.finance?.revenue
-			"
-		>
-			<a-button type="primary" @click="visiblePayDebt = true">
-				Trả nợ
-			</a-button>
+		<div v-if="exportNote.status === 'Success' && this.exportNote.finance?.debt > 0">
+			<a-button type="primary" @click="visiblePayDebt = true">Trả nợ</a-button>
 			<a-modal
 				v-model:visible="visiblePayDebt"
 				@ok="startPayDebtExportNote"
@@ -74,7 +64,7 @@
 				title="Trả nợ"
 			>
 				<div class="flex items-center mb-2">
-					<div class="w-100px flex-none">Số tiền</div>
+					<div class="w-20 flex-none">Số tiền</div>
 					<a-input
 						v-model:value.number="numberPayDebt"
 						type="number"
@@ -99,21 +89,21 @@ import {
 	payDebtExportNote,
 	deleteExportNote,
 } from '@/firebase/useExportNote'
-import { goodsList } from '@/firebase/useWarehouse'
 import ExportNoteTableGoods from '@/components/export-note/ExportNoteTableGoods.vue'
-import ExportNoteInvoices from '@/components/export-note/export-note-details/ExportNoteInvoices.vue'
+import ModalInvoices from '@/components/export-note/export-note-details/ModalInvoices.vue'
 import { UTILS_EXPORTNOTES } from '@/utils/constants'
+import { MyFormatDateTime } from '@/utils/convert'
 
 export default {
-	components: { ExportNoteTableGoods, ExportNoteInvoices },
+	components: { ExportNoteTableGoods, ModalInvoices },
 	setup() {
 		const route = useRoute()
 		const realtimeExportNote = startRealtimeExportNote(route.params.id)
+		const exportNote = realtimeExportNote.data
 
 		return {
-			exportNote: realtimeExportNote.data,
+			exportNote,
 			realtimeExportNote,
-			goodsList,
 			visiblePayDebt: ref(false),
 			numberPayDebt: ref(0),
 			loadingProcessExportNote: ref(false),
@@ -128,15 +118,14 @@ export default {
 	},
 	watch: {
 		exportNote() {
-			this.numberPayDebt =
-				this.exportNote.finance?.revenue - this.exportNote.payment?.alreadyPaid
+			this.numberPayDebt = this.exportNote.finance?.debt
 		},
 	},
 	methods: {
-		async startProcessExportNote(exportNoteID) {
+		async startProcessExportNote() {
 			this.loadingProcessExportNote = true
 			try {
-				await processExportNote(exportNoteID)
+				await processExportNote(this.exportNote.exportNoteID)
 				message.success('Process export note success !!!', 2)
 				// this.$router.push({ name: 'ExportNote List', params: {} })
 			} catch (error) {
@@ -146,10 +135,10 @@ export default {
 				this.loadingProcessExportNote = false
 			}
 		},
-		async startRefundExportNote(exportNoteID) {
+		async startRefundExportNote() {
 			this.loadingRefundExportNote = true
 			try {
-				await refundExportNote(exportNoteID)
+				await refundExportNote(this.exportNote.exportNoteID)
 				message.success('Refund export note success !!!', 2)
 			} catch (error) {
 				console.error(error)
@@ -171,10 +160,10 @@ export default {
 				this.loadingPayDebt = false
 			}
 		},
-		async startDeleteExportNote(exportNoteID) {
+		async startDeleteExportNote() {
 			this.loadingDeleteExportNote = true
 			try {
-				await deleteExportNote(exportNoteID)
+				await deleteExportNote(this.exportNote.exportNoteID)
 				message.success('Xóa đơn hàng thành công !!!', 2)
 				this.$router.push({ name: 'ExportNote List', params: {} })
 			} catch (error) {
@@ -184,6 +173,18 @@ export default {
 				this.loadingDeleteExportNote = false
 			}
 		},
+		redirectExportNoteEdit() {
+			this.$router.push({
+				name: 'ExportNote Create Modify',
+				params: { id: this.exportNote.exportNoteID, mode: 'edit' },
+			})
+		},
+		redirectExportNoteCopy() {
+			this.$router.push({
+				name: 'ExportNote Create Modify',
+				params: { id: this.exportNote.exportNoteID, mode: 'copy' },
+			})
+		},
 		confirmRefundExportNote() {
 			const that = this
 			Modal.confirm({
@@ -191,7 +192,7 @@ export default {
 				icon: createVNode(ExclamationCircleOutlined),
 				content: 'Bạn có chắc chắn muốn hoàn trả đơn hàng này ?',
 				onOk() {
-					that.startRefundExportNote(that.exportNote.exportNoteID)
+					that.startRefundExportNote()
 				},
 			})
 		},
@@ -202,16 +203,13 @@ export default {
 				icon: createVNode(ExclamationCircleOutlined),
 				content: 'Bạn có chắc chắn muốn xóa đơn hàng này ?',
 				onOk() {
-					that.startDeleteExportNote(that.exportNote.exportNoteID)
+					that.startDeleteExportNote()
 				},
 			})
+		},
+		formatDateTime(str) {
+			return MyFormatDateTime(str, 'DD/MM/YYYY')
 		},
 	},
 }
 </script>
-
-<style lang="scss" scoped>
-.w-100px {
-	width: 100px;
-}
-</style>

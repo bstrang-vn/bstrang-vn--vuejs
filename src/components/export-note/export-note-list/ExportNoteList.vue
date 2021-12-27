@@ -1,16 +1,17 @@
 <template>
-	<div class="flex justify-end mb-2">
-		<a-button
-			type="primary"
-			@click="$router.push({ name: 'ExportNote Create Modify', params: {} })"
-		>
+	<h1 class="title-content">Danh sách đơn hàng</h1>
+	<div class="flex justify-between mb-2 items-center">
+		<div class="input-text">
+			<input :value="searchText" @input="handleSearchText" type="text" placeholder="Search..." />
+		</div>
+		<a-button type="primary" @click="redirectExportNoteCreate">
 			<template #icon>
 				<PlusOutlined />
 			</template>
-			Tạo đơn hàng mới
+			Tạo Mới
 		</a-button>
 	</div>
-	<div class="wrapper-table">
+	<div>
 		<table class="table">
 			<thead>
 				<tr>
@@ -24,26 +25,24 @@
 				</tr>
 			</thead>
 			<tbody class="text-right">
-				<tr v-if="Object.keys(exportNoteList).length === 0">
+				<tr v-if="exportNoteFilter.length === 0">
 					<td colspan="10" class="text-center">No data available in table</td>
 				</tr>
 				<tr
-					v-for="(note, noteID, noteIndex) in exportNoteList"
+					v-for="(note, noteIndex) in exportNoteFilter"
 					:key="noteIndex"
-					@click="$router.push({ name: 'ExportNote Details', params: { id: noteID } })"
-					:style="note.status === 'Pending' ? 'opacity: 0.7' : ''"
+					@dblclick="redirectExportNoteDetails(note.exportNoteID)"
+					:style="note.status === 'Pending' ? 'color: blue; opacity: 0.7' : ''"
 				>
-					<td class="text-center">{{ noteIndex + 1 }}</td>
+					<td class="text-center">{{ exportNoteFilter.length - noteIndex }}</td>
 					<td class="text-left">{{ note.customer?.customerName || '-' }}</td>
-					<td>{{ note.shipping.unit }}</td>
-					<td>{{ note.payment.method }}</td>
+					<td class="text-left">{{ note.shipping.unit }}</td>
+					<td class="text-left">{{ note.payment.method }}</td>
 					<td>{{ note.finance.revenue }}</td>
-					<td
-						:style="note.finance.revenue > note.payment.alreadyPaid ? 'color: red' : ''"
-					>
-						{{ note.finance.revenue - note.payment.alreadyPaid }}
+					<td :style="(note.status === 'Success') & (note.finance.debt > 0) ? 'color: red' : ''">
+						{{ note.finance.debt }}
 					</td>
-					<td>{{ formatDateTime(note.createdAt) }}</td>
+					<td>{{ formatDateTime(note.updatedAt) }}</td>
 				</tr>
 			</tbody>
 		</table>
@@ -55,16 +54,40 @@
 </template>
 
 <script>
+import { ref } from 'vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
-import { exportNoteList } from '@/firebase/useExportNote'
-import { MyFormatDateTime } from '@/utils/convert'
+import { exportNoteArray } from '@/firebase/useExportNote'
+import { MyFormatDateTime, MySearch } from '@/utils/convert'
 
 export default {
 	components: { PlusOutlined },
 	setup() {
-		return { exportNoteList }
+		return {
+			exportNoteArray,
+			searchText: ref(''),
+		}
+	},
+	computed: {
+		exportNoteFilter() {
+			return this.exportNoteArray.filter(note => MySearch(note.customer.customerName, this.searchText))
+		},
 	},
 	methods: {
+		handleSearchText(e) {
+			this.searchText = e.target.value
+		},
+		redirectExportNoteCreate() {
+			this.$router.push({
+				name: 'ExportNote Create Modify',
+				params: { mode: 'create' },
+			})
+		},
+		redirectExportNoteDetails(noteID) {
+			this.$router.push({
+				name: 'ExportNote Details',
+				params: { id: noteID },
+			})
+		},
 		formatDateTime(time) {
 			return MyFormatDateTime(time, 'DD/MM/YY')
 		},
@@ -73,7 +96,8 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.wrapper-table {
-	overflow-x: scroll;
+.input-text {
+	width: 400px;
+	max-width: 50%;
 }
 </style>

@@ -1,13 +1,14 @@
 <template>
-	<div class="flex justify-end mb-2">
-		<a-button
-			type="primary"
-			@click="$router.push({ name: 'ImportNote Create Modify', params: {} })"
-		>
+	<h1 class="title-content">Danh sách phiếu nhập hàng</h1>
+	<div class="flex justify-between mb-2 items-center">
+		<div class="input-text">
+			<input :value="searchText" @input="handleSearchText" type="text" placeholder="Search..." />
+		</div>
+		<a-button type="primary" @click="redirectImportNoteCreate">
 			<template #icon>
 				<PlusOutlined />
 			</template>
-			Tạo Phiếu Nhập Thuốc Mới
+			Tạo Mới
 		</a-button>
 	</div>
 	<div class="wrapper-table">
@@ -26,29 +27,25 @@
 				</tr>
 			</thead>
 			<tbody style="text-align:right">
-				<tr v-if="Object.keys(importNoteList).length === 0">
+				<tr v-if="importNoteFilter.length === 0">
 					<td colspan="10" style="text-align:center">No data available in table</td>
 				</tr>
-				<template v-for="(note, noteID, noteIndex) in importNoteList" :key="noteIndex">
+				<template v-for="(note, noteIndex) in importNoteFilter" :key="noteIndex">
 					<tr
 						v-for="(stock, goodsID, stockIndex) in note.stockIn"
 						:key="stockIndex"
-						@click="
-							$router.push({ name: 'ImportNote Details', params: { id: noteID } })
-						"
-						:style="note.status === 'Pending' ? 'opacity: 0.7' : ''"
+						@click="redirectImportNoteDetails(note.importNoteID)"
+						:style="note.status === 'Pending' ? 'color: blue' : ''"
 					>
 						<td v-if="stockIndex === 0" :rowspan="Object.keys(note.stockIn).length">
-							{{ noteIndex + 1 }}
+							{{ importNoteFilter.length - noteIndex }}
 						</td>
-						<td
-							v-if="stockIndex === 0"
-							:rowspan="Object.keys(note.stockIn).length"
-							style="text-align:left"
-						>
+						<td v-if="stockIndex === 0" :rowspan="Object.keys(note.stockIn).length" style="text-align:left">
 							{{ note.provider?.providerName || '-' }}
 						</td>
-						<td style="text-align:left">{{ goodsList[goodsID]?.goodsName || '-' }}</td>
+						<td style="text-align:left">
+							{{ goodsArray.find(item => item.goodsID === goodsID)?.goodsName || '-' }}
+						</td>
 						<td>
 							<p v-for="({ quantity }, batch, index) in stock" :key="index">
 								{{ quantity }}
@@ -72,17 +69,42 @@
 </template>
 
 <script>
+import { ref } from 'vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
-import { importNoteList } from '@/firebase/useImportNote'
-import { goodsList } from '@/firebase/useWarehouse'
-import { MyFormatDateTime } from '@/utils/convert'
+import { importNoteArray } from '@/firebase/useImportNote'
+import { goodsArray } from '@/firebase/useWarehouse'
+import { MyFormatDateTime, MySearch } from '@/utils/convert'
 
 export default {
 	components: { PlusOutlined },
 	setup() {
-		return { importNoteList, goodsList }
+		return {
+			goodsArray,
+			importNoteArray,
+			searchText: ref(''),
+		}
+	},
+	computed: {
+		importNoteFilter() {
+			return this.importNoteArray.filter(note => MySearch(note.provider.providerName, this.searchText))
+		},
 	},
 	methods: {
+		handleSearchText(e) {
+			this.searchText = e.target.value
+		},
+		redirectImportNoteCreate() {
+			this.$router.push({
+				name: 'ImportNote Create Modify',
+				params: { mode: 'create' },
+			})
+		},
+		redirectImportNoteDetails(noteID) {
+			this.$router.push({
+				name: 'ImportNote Details',
+				params: { id: noteID },
+			})
+		},
 		formatDateTime(time) {
 			return MyFormatDateTime(time, 'DD/MM/YY')
 		},
@@ -91,7 +113,8 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.wrapper-table {
-	overflow-x: scroll;
+.input-text {
+	width: 400px;
+	max-width: 50%;
 }
 </style>

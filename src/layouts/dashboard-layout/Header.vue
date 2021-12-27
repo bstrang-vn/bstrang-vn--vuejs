@@ -1,7 +1,7 @@
 <template>
 	<a-layout-header class="dashboard-header">
 		<div class="flex items-center">
-			<MenuUnfoldOutlined class="icon-menu-fold" @click="$emit('handleShowDrawer', true)" />
+			<MenuUnfoldOutlined class="icon-menu-fold" @click="emitShowDrawer" />
 			<div class="font-bold text-base">
 				<span class="menu-item">
 					<router-link to="/dashboard">Dashboard</router-link>
@@ -44,7 +44,6 @@
 </template>
 
 <script>
-import { useRouter } from 'vue-router'
 import { UserOutlined, MenuUnfoldOutlined, LogoutOutlined } from '@ant-design/icons-vue'
 import { getUser, logout } from '@/firebase/useAuth'
 
@@ -54,19 +53,23 @@ export default {
 		MenuUnfoldOutlined,
 		LogoutOutlined,
 	},
+	emits: ['handleShowDrawer'],
 	setup() {
-		const router = useRouter()
-		const handleLogout = async () => {
+		return { getUser }
+	},
+	methods: {
+		emitShowDrawer() {
+			this.$emit('handleShowDrawer', true)
+		},
+		async handleLogout() {
 			await logout()
-			router.push({ name: 'Login', params: {} })
-		}
-		const handleUserAction = async e => {
+			this.$router.push({ name: 'Login', params: {} })
+		},
+		async handleUserAction(e) {
 			if (e.key === 'logout') {
-				handleLogout()
+				this.handleLogout()
 			}
-		}
-
-		return { getUser, handleLogout, handleUserAction }
+		},
 	},
 }
 </script>

@@ -1,6 +1,11 @@
 <template>
 	<div class="logo" />
-	<a-menu theme="dark" mode="inline" v-model:selectedKeys="selectedMenuKeys" @click="handleMenuClick">
+	<a-menu
+		theme="dark"
+		mode="inline"
+		v-model:selectedKeys="selectedMenuKeys"
+		@click="handleMenuClick"
+	>
 		<a-menu-item key="Dashboard">
 			<AppstoreOutlined />
 			<span>Home</span>
@@ -9,13 +14,13 @@
 			<ShopOutlined />
 			<span>Kho Hàng</span>
 		</a-menu-item>
-		<a-menu-item key="ExportNote List">
-			<FormOutlined />
-			<span>Đơn Hàng</span>
-		</a-menu-item>
 		<a-menu-item key="ImportNote List">
 			<ShoppingCartOutlined />
 			<span>Phiếu Nhập Hàng</span>
+		</a-menu-item>
+		<a-menu-item key="ExportNote List">
+			<FormOutlined />
+			<span>Đơn Hàng</span>
 		</a-menu-item>
 		<a-menu-item key="Provider List">
 			<ApartmentOutlined />
@@ -43,7 +48,6 @@ import {
 	TeamOutlined,
 	AreaChartOutlined,
 } from '@ant-design/icons-vue'
-import { useRouter } from 'vue-router'
 
 export default {
 	components: {
@@ -55,14 +59,15 @@ export default {
 		TeamOutlined,
 		AreaChartOutlined,
 	},
-	setup(props, context) {
-		const router = useRouter()
-		const handleMenuClick = menu => {
-			router.push({ name: menu.key, params: {} })
-			context.emit('handleShowDrawer', false)
-		}
-		const selectedMenuKeys = ref([''])
-		return { handleMenuClick, selectedMenuKeys }
+	setup() {
+		return { selectedMenuKeys: ref(['']) }
+	},
+	emits: ['handleShowDrawer'],
+	methods: {
+		handleMenuClick(menu) {
+			this.$router.push({ name: menu.key, params: {} })
+			this.$emit('handleShowDrawer', false)
+		},
 	},
 }
 </script>

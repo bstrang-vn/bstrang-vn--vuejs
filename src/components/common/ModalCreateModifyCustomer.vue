@@ -9,15 +9,15 @@
 	>
 		<form>
 			<div class="flex items-center mb-2">
-				<div class="w-100px flex-none">Name</div>
+				<div class="w-20 flex-none">Name</div>
 				<a-input v-model:value="customer.customerName" class="flex-auto" />
 			</div>
 			<div class="flex items-center mb-2">
-				<div class="w-100px flex-none">Phone</div>
+				<div class="w-20 flex-none">Phone</div>
 				<a-input v-model:value="customer.phone" class="flex-auto" />
 			</div>
 			<div class="flex items-center mb-2">
-				<div class="w-100px flex-none">Address</div>
+				<div class="w-20 flex-none">Address</div>
 				<a-input v-model:value="customer.address" class="flex-auto" />
 			</div>
 		</form>
@@ -77,9 +77,3 @@ export default {
 	},
 }
 </script>
-
-<style lang="scss" scoped>
-.w-100px {
-	width: 100px;
-}
-</style>

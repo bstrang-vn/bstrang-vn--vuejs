@@ -3,84 +3,86 @@ import {
 	onSnapshot,
 	collection,
 	doc,
-	addDoc,
+	getDoc,
+	getDocs,
 	setDoc,
+	updateDoc,
 	deleteDoc,
 	query,
 	where,
 	orderBy,
-	limit,
 	runTransaction,
 	increment,
 	arrayUnion,
 	arrayRemove,
 } from 'firebase/firestore'
 import { ref, reactive } from 'vue'
+import { MyFormatDateTime } from '@/utils/convert'
 
-const nowTime = new Date().getTime()
-const exportNoteList = reactive({})
+const getYear = new Date().getFullYear()
+const getMonth = new Date().getMonth() + 1
+const firstDayOfMonth = new Date(getYear + '-' + getMonth).getTime()
+const exportNoteArray = reactive([])
 const db = getFirestore()
-const qr = query(
-	collection(db, 'EXPORTNOTE'),
-	where('updatedAt', '>', nowTime - 7 * 24 * 60 * 60 * 1000),
-	orderBy('updatedAt', 'asc'),
-	limit(10),
-)
+const qr = query(collection(db, 'EXPORTNOTE'), where('updatedAt', '>', firstDayOfMonth), orderBy('updatedAt', 'asc'))
 
 onSnapshot(qr, snapshot => {
 	snapshot.docChanges().forEach(change => {
-		if (change.type === 'added' || change.type === 'modified') {
-			exportNoteList[change.doc.id] = change.doc.data()
+		const newNote = {
+			...change.doc.data(),
+			exportNoteID: change.doc.id,
 		}
-		if (change.type === 'removed') {
-			delete exportNoteList[change.doc.id]
+		const noteIndex = exportNoteArray.findIndex(item => item.exportNoteID === change.doc.id)
+		if (change.type === 'added') {
+			exportNoteArray.unshift(newNote)
+		} else if (change.type === 'modified') {
+			exportNoteArray.splice(noteIndex, 1, newNote)
+		} else if (change.type === 'removed') {
+			exportNoteArray.splice(noteIndex, 1)
 		}
 	})
 })
 
 const startRealtimeExportNote = exportNoteID => {
-	const data = ref({
-		exportNoteID: '',
-		customer: {
-			customerID: '',
-			customerName: '',
-		},
-		stockOut: {},
-		shipping: {
-			cost: '',
-			unit: 'Viettel Post',
-			whoPays: '-',
-		},
-		payment: {
-			alreadyPaid: 0,
-			method: '',
-		},
-		finance: {
-			revenue: 0,
-			profit: 0,
-		},
-		state: '',
+	const data = ref({})
+	const unSubscribe = onSnapshot(doc(db, 'EXPORTNOTE', exportNoteID), async noteDoc => {
+		if (!noteDoc.exists()) return
+		data.value = {
+			...noteDoc.data(),
+			exportNoteID,
+		}
 	})
-	let unSubscribe = () => {}
-	if (exportNoteID) {
-		unSubscribe = onSnapshot(doc(db, 'EXPORTNOTE', exportNoteID), async noteDoc => {
-			if (!noteDoc.exists()) return
-			data.value = {
-				exportNoteID,
-				...noteDoc.data(),
-			}
-		})
-	}
 	return { data, unSubscribe }
 }
 
+const getExportNoteById = async noteID => {
+	if (!noteID) throw new Error('ID must not be empty')
+	const noteRef = doc(db, 'EXPORTNOTE', noteID)
+	const noteSnap = await getDoc(noteRef)
+	if (!noteSnap.exists()) throw new Error('ExportNote not found !!!')
+	return {
+		...noteSnap.data(),
+		exportNoteID: noteSnap.id,
+	}
+}
+
+const getExportNoteList = async noteIDList => {
+	const queryExportNoteList = noteIDList.map(noteID => getDoc(doc(db, 'EXPORTNOTE', noteID)))
+	const exportNoteSnapList = await Promise.all(queryExportNoteList)
+	return exportNoteSnapList.map(noteSnap => ({
+        ...noteSnap.data(),
+		exportNoteID: noteSnap.id,
+	}))
+}
+
 const addExportNotePending = async noteData => {
-	const noteRef = await addDoc(collection(db, 'EXPORTNOTE'), {
-		customer: noteData.customer,
-		stockOut: noteData.stockOut,
-		shipping: noteData.shipping,
-		payment: noteData.payment,
-		finance: noteData.finance,
+	const noteID = MyFormatDateTime(new Date(), 'YY-MM-DD-HH-mm-ss')
+	const noteRef = doc(db, 'EXPORTNOTE', noteID)
+	const noteSnap = await getDoc(noteRef)
+	if (noteSnap.exists()) throw new Error('Phiếu nhập này đã tồn tại')
+
+	await setDoc(noteRef, {
+		...noteData,
 		status: 'Pending',
 
 		createdAt: new Date().getTime(),
@@ -135,11 +137,12 @@ const processExportNote = async noteID => {
 		// transaction update customer
 		transaction.update(doc(db, 'CUSTOMER', noteData.customer.customerID), {
 			exportNoteIDList: arrayUnion(noteID),
-			'finance.debt': increment(noteData.finance.revenue - noteData.payment.alreadyPaid),
+			'finance.debt': increment(noteData.finance.debt),
 		})
 
 		transaction.update(exportNoteRef, {
 			status: 'Success',
+			updatedAt: new Date().getTime(),
 		})
 	})
 }
@@ -167,30 +170,13 @@ const refundExportNote = async noteID => {
 
 		transaction.update(doc(db, 'CUSTOMER', noteData.customer.customerID), {
 			exportNoteIDList: arrayRemove(noteID),
-			'finance.debt': increment(noteData.payment.alreadyPaid - noteData.finance.revenue),
+			'finance.debt': increment(0 - noteData.finance.debt),
 		})
 		transaction.update(exportNoteRef, {
 			status: 'Pending',
+			updatedAt: new Date().getTime(),
 		})
 	})
-}
-
-const updateExportNotePending = async (noteID, noteData) => {
-	if (noteData.status !== 'Pending') {
-		throw new Error('You only can update import note in pending status')
-	}
-	const exportNoteRef = doc(db, 'EXPORTNOTE', noteID)
-	await setDoc(exportNoteRef, {
-		customer: noteData.customer,
-		stockOut: noteData.stockOut,
-		shipping: noteData.shipping,
-		payment: noteData.payment,
-		finance: noteData.finance,
-		status: 'Pending',
-
-		updatedAt: new Date().getTime(),
-	})
-	return noteID
 }
 
 const payDebtExportNote = async (noteID, number) => {
@@ -205,7 +191,7 @@ const payDebtExportNote = async (noteID, number) => {
 		}
 
 		transaction.update(exportNoteRef, {
-			'payment.alreadyPaid': increment(number),
+			'finance.debt': increment(0 - number),
 		})
 		transaction.update(doc(db, 'CUSTOMER', noteData.customer.customerID), {
 			'finance.debt': increment(0 - number),
@@ -213,12 +199,50 @@ const payDebtExportNote = async (noteID, number) => {
 	})
 }
 
+const updateExportNotePending = async (noteID, noteData) => {
+	if (!noteID) throw new Error('ID must not be empty')
+	const noteRef = doc(db, 'EXPORTNOTE', noteID)
+	const noteSnap = await getDoc(noteRef)
+	if (!noteSnap.exists()) throw new Error('ExportNote not found !!!')
+	if (noteSnap.data().status !== 'Pending') throw new Error('Notes is not in pending status')
+
+	await updateDoc(noteRef, {
+		...noteData,
+		updatedAt: new Date().getTime(),
+	})
+	return noteID
+}
+
 const deleteExportNote = async noteID => {
+	if (!noteID) throw new Error('ID must not be empty')
+	const noteRef = doc(db, 'EXPORTNOTE', noteID)
+	const noteSnap = await getDoc(noteRef)
+	if (!noteSnap.exists()) throw new Error('ExportNote not found !!!')
+	if (noteSnap.data().status !== 'Pending') throw new Error('Notes is not in pending status')
+
 	await deleteDoc(doc(db, 'EXPORTNOTE', noteID))
 }
+
+const getExportNoteListHasDebtByCustomerID = async customerID => {
+	const queryNoteList = query(
+		collection(db, 'EXPORTNOTE'),
+		where('customer.customerID', '==', customerID),
+		where('status', '==', 'Success'),
+		where('finance.debt', '>', 0),
+	)
+	const exportNoteSnapList = await getDocs(queryNoteList)
+	const noteListHasDebt = []
+	exportNoteSnapList.forEach(noteSnap => {
+		noteListHasDebt.push({ exportNoteID: noteSnap.id, ...noteSnap.data() })
+	})
+	return noteListHasDebt
+}
 export {
-	exportNoteList,
+	exportNoteArray,
+	getExportNoteList,
+	getExportNoteListHasDebtByCustomerID,
 	startRealtimeExportNote,
+	getExportNoteById,
 	addExportNotePending,
 	processExportNote,
 	refundExportNote,

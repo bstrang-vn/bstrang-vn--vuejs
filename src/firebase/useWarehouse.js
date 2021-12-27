@@ -11,15 +11,22 @@ import {
 } from 'firebase/firestore'
 import { reactive, ref } from 'vue'
 
-const goodsList = reactive({})
+const goodsArray = reactive([])
 const db = getFirestore()
 
 onSnapshot(query(collection(db, 'WAREHOUSE')), snapshot => {
 	snapshot.docChanges().forEach(change => {
-		if (change.type === 'added' || change.type === 'modified') {
-			goodsList[change.doc.id] = change.doc.data()
+		const newGoods = {
+			goodsID: change.doc.id,
+			...change.doc.data(),
+		}
+		const goodsIndex = goodsArray.findIndex(item => item.goodsID === change.doc.id)
+		if (change.type === 'added') {
+			goodsArray.push(newGoods)
+		} else if (change.type === 'modified') {
+			goodsArray.splice(goodsIndex, 1, newGoods)
 		} else if (change.type === 'removed') {
-			delete goodsList[change.doc.id]
+			goodsArray.splice(goodsIndex, 1)
 		}
 	})
 })
@@ -56,11 +63,12 @@ const startRealtimeGoods = goodsID => {
 }
 
 const addGoods = async newData => {
-	const { goodsName, group, unit, retailPrice, wholesalePrice } = newData
+	const { goodsName, group, unit, costPrice, retailPrice, wholesalePrice } = newData
 	const docRef = await addDoc(collection(db, 'WAREHOUSE'), {
 		goodsName,
 		group,
 		unit,
+		costPrice,
 		retailPrice,
 		wholesalePrice,
 		stockAvail: {},
@@ -79,11 +87,10 @@ const addGoods = async newData => {
 	}
 }
 
-const updateGoods = async (id, { retailPrice, wholesalePrice }) => {
+const updateGoods = async (id, data) => {
 	const docRef = doc(db, 'WAREHOUSE', id)
 	await updateDoc(docRef, {
-		retailPrice,
-		wholesalePrice,
+		...data,
 		updatedAt: new Date().getTime(),
 	})
 
@@ -99,4 +106,4 @@ const deleteGoods = async goodsID => {
 	return goodsID
 }
 
-export { goodsList, startRealtimeGoods, addGoods, updateGoods, deleteGoods }
+export { goodsArray, startRealtimeGoods, addGoods, updateGoods, deleteGoods }
