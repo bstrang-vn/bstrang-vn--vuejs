@@ -33,11 +33,16 @@
 				<td>{{ customer.customerName }}</td>
 				<td>{{ customer.phone }}</td>
 				<td>{{ customer.address }}</td>
-				<td :style="customer.finance?.debt ? 'color: red' : ''" class="text-right">{{ customer.finance?.debt }}</td>
+				<td :style="customer.finance?.debt ? 'color: red' : ''" class="text-right">
+					{{ customer.finance?.debt }}
+				</td>
 			</tr>
 		</tbody>
 	</table>
-
+	<div class="flex justify-end mt-2">
+		Tổng Nợ :
+		<span class="font-bold">{{ formatNumber(totalDebt) }}</span>
+	</div>
 	<div class="mt-4">
 		<a-button @click="$router.push({ name: 'Dashboard', params: {} })">Back</a-button>
 	</div>
@@ -48,7 +53,7 @@ import { ref } from 'vue'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import { customerArray } from '@/firebase/useCustomer'
 import ModalCreateModifyCustomer from '@/components/common/ModalCreateModifyCustomer.vue'
-import { MySearch } from '@/utils/convert'
+import { MySearch, MyFormatNumber } from '@/utils/convert'
 
 export default {
 	components: { ModalCreateModifyCustomer, PlusOutlined },
@@ -68,10 +73,19 @@ export default {
 					return 0
 				})
 		},
+		totalDebt() {
+			return this.customerArray.reduce((acc, customer) => {
+				const each = customer.finance?.debt || 0
+				return acc + each
+			}, 0)
+		},
 	},
 	methods: {
 		handleSearchText(e) {
 			this.searchText = e.target.value
+		},
+		formatNumber(number) {
+			return MyFormatNumber(number, 3)
 		},
 	},
 }
