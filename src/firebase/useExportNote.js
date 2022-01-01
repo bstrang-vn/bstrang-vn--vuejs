@@ -19,14 +19,17 @@ import {
 import { ref, reactive } from 'vue'
 import { MyFormatDateTime } from '@/utils/convert'
 
-const getYear = new Date().getFullYear()
-const getMonth = new Date().getMonth() + 1
-const firstDayOfMonth = new Date(getYear + '-' + getMonth).getTime()
-const exportNoteArray = reactive([])
 const db = getFirestore()
-const qr = query(collection(db, 'EXPORTNOTE'), where('updatedAt', '>', firstDayOfMonth), orderBy('updatedAt', 'asc'))
+const exportNoteArray = reactive([])
+const exportNotePending = reactive([])
+const exportNoteDebt = reactive([])
 
-onSnapshot(qr, snapshot => {
+const selectDaysAgo = new Date().getTime() - 10 * 24 * 60 * 60 * 1000
+const qrArray = query(collection(db, 'EXPORTNOTE'), where('createdAt', '>', selectDaysAgo), orderBy('createdAt', 'asc'))
+const qrAction = query(collection(db, 'EXPORTNOTE'), where('status', '==', 'Pending'))
+const qrDebt = query(collection(db, 'EXPORTNOTE'), where('status', '==', 'Success'), where('finance.debt', '!=', 0))
+
+onSnapshot(qrArray, snapshot => {
 	snapshot.docChanges().forEach(change => {
 		const newNote = {
 			...change.doc.data(),
@@ -39,6 +42,44 @@ onSnapshot(qr, snapshot => {
 			exportNoteArray.splice(noteIndex, 1, newNote)
 		} else if (change.type === 'removed') {
 			exportNoteArray.splice(noteIndex, 1)
+		}
+	})
+})
+
+onSnapshot(qrAction, snapshot => {
+	snapshot.docChanges().forEach(change => {
+		const newNote = {
+			...change.doc.data(),
+			exportNoteID: change.doc.id,
+		}
+		const noteIndex = exportNotePending.findIndex(item => item.exportNoteID === change.doc.id)
+		if (change.type === 'added') {
+			exportNotePending.unshift(newNote)
+		} else if (change.type === 'modified') {
+			exportNotePending.splice(noteIndex, 1, newNote)
+		} else if (change.type === 'removed') {
+			exportNotePending.splice(noteIndex, 1)
+		}
+	})
+})
+
+onSnapshot(qrDebt, snapshot => {
+	snapshot.docChanges().forEach(change => {
+		const newNote = {
+			...change.doc.data(),
+			exportNoteID: change.doc.id,
+		}
+		const noteIndex = exportNoteDebt.findIndex(item => item.exportNoteID === change.doc.id)
+		if (change.type === 'added') {
+			let findIndexPush = exportNoteDebt.findIndex(item => item.createdAt < newNote.createdAt)
+			if (findIndexPush === -1) {
+				findIndexPush = exportNoteDebt.length
+			}
+			exportNoteDebt.splice(findIndexPush, 0, newNote)
+		} else if (change.type === 'modified') {
+			exportNoteDebt.splice(noteIndex, 1, newNote)
+		} else if (change.type === 'removed') {
+			exportNoteDebt.splice(noteIndex, 1)
 		}
 	})
 })
@@ -70,7 +111,7 @@ const getExportNoteList = async noteIDList => {
 	const queryExportNoteList = noteIDList.map(noteID => getDoc(doc(db, 'EXPORTNOTE', noteID)))
 	const exportNoteSnapList = await Promise.all(queryExportNoteList)
 	return exportNoteSnapList.map(noteSnap => ({
-        ...noteSnap.data(),
+		...noteSnap.data(),
 		exportNoteID: noteSnap.id,
 	}))
 }
@@ -223,24 +264,11 @@ const deleteExportNote = async noteID => {
 	await deleteDoc(doc(db, 'EXPORTNOTE', noteID))
 }
 
-const getExportNoteListHasDebtByCustomerID = async customerID => {
-	const queryNoteList = query(
-		collection(db, 'EXPORTNOTE'),
-		where('customer.customerID', '==', customerID),
-		where('status', '==', 'Success'),
-		where('finance.debt', '>', 0),
-	)
-	const exportNoteSnapList = await getDocs(queryNoteList)
-	const noteListHasDebt = []
-	exportNoteSnapList.forEach(noteSnap => {
-		noteListHasDebt.push({ exportNoteID: noteSnap.id, ...noteSnap.data() })
-	})
-	return noteListHasDebt
-}
 export {
 	exportNoteArray,
+	exportNotePending,
+	exportNoteDebt,
 	getExportNoteList,
-	getExportNoteListHasDebtByCustomerID,
 	startRealtimeExportNote,
 	getExportNoteById,
 	addExportNotePending,

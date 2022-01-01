@@ -15,7 +15,7 @@
 	<div class="flex items-center mb-2">
 		<div class="flex-none w-20">Ngày</div>
 		<div class="w-3">:</div>
-		<div>{{ formatDateTime(exportNote.updatedAt) }}</div>
+		<div>{{ formatDateTime(exportNote.createdAt) }}</div>
 	</div>
 	<div class="flex items-center mb-2">
 		<div class="flex-none w-20">Ghi chú</div>

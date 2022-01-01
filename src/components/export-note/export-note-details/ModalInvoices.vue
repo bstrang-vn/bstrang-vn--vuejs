@@ -76,7 +76,7 @@
 				</tbody>
 			</table>
 		</div>
-		<div class="flex justify-end">Ngày tạo đơn: {{ formatDateTime(exportNote.updatedAt) }}</div>
+		<div class="flex justify-end">Ngày tạo đơn: {{ formatDateTime(exportNote.createdAt) }}</div>
 	</a-modal>
 </template>
 

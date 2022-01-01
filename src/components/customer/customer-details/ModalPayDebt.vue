@@ -42,7 +42,7 @@
 import { ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { addPayDebt } from '@/firebase/useCustomer'
-import { getExportNoteListHasDebtByCustomerID } from '@/firebase/useExportNote'
+import { exportNoteDebt } from '@/firebase/useExportNote'
 import { MyFormatDateTime } from '@/utils/convert'
 
 export default {
@@ -54,6 +54,7 @@ export default {
 			numberPayDebt: ref(0),
 			noteListHasDebt: ref([]),
 			noteListSelect: ref([]),
+			exportNoteDebt,
 		}
 	},
 	methods: {
@@ -61,12 +62,7 @@ export default {
 			const that = this
 			this.visibleModal = true
 			this.customer = customer
-
-			this.noteListHasDebt = (await getExportNoteListHasDebtByCustomerID(customer.customerID)).sort((a, b) => {
-				if (a.updatedAt > b.updatedAt) return -1
-				if (a.updatedAt < b.updatedAt) return 1
-				return 0
-			})
+			this.noteListHasDebt = this.exportNoteDebt.filter(note => note.customer.customerID === customer.customerID)
 			this.noteListHasDebt.forEach(note => {
 				that.noteListSelect.push({
 					exportNoteID: note.exportNoteID,
