@@ -24,8 +24,15 @@ const exportNoteArray = reactive([])
 const exportNotePending = reactive([])
 const exportNoteDebt = reactive([])
 
-const selectDaysAgo = new Date().getTime() - 10 * 24 * 60 * 60 * 1000
-const qrArray = query(collection(db, 'EXPORTNOTE'), where('createdAt', '>', selectDaysAgo), orderBy('createdAt', 'asc'))
+const today = new Date()
+const firstMonth = new Date(today.getFullYear(), today.getMonth())
+const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1)
+const qrArray = query(
+	collection(db, 'EXPORTNOTE'),
+	where('createdAt', '>=', firstMonth.getTime()),
+	where('createdAt', '<=', nextMonth.getTime()),
+	orderBy('createdAt', 'asc'),
+)
 const qrAction = query(collection(db, 'EXPORTNOTE'), where('status', '==', 'Pending'))
 const qrDebt = query(collection(db, 'EXPORTNOTE'), where('status', '==', 'Success'), where('finance.debt', '!=', 0))
 

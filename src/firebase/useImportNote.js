@@ -19,14 +19,13 @@ import {
 import { ref, reactive } from 'vue'
 import { MyFormatDateTime } from '@/utils/convert'
 
-const getYear = new Date().getFullYear()
-const getMonth = new Date().getMonth() + 1
-const firstDayOfMonth = new Date(getYear + '-' + getMonth).getTime()
-const importNoteArray = reactive([])
 const db = getFirestore()
-const qr = query(collection(db, 'IMPORTNOTE'), where('updatedAt', '>', firstDayOfMonth), orderBy('updatedAt', 'asc'))
+const importNoteArray = reactive([])
 
-onSnapshot(qr, snapshot => {
+const selectDaysAgo = new Date().getTime() - 30 * 24 * 60 * 60 * 1000
+const qrArray = query(collection(db, 'IMPORTNOTE'), where('createdAt', '>', selectDaysAgo), orderBy('createdAt', 'asc'))
+
+onSnapshot(qrArray, snapshot => {
 	snapshot.docChanges().forEach(change => {
 		const newNote = {
 			...change.doc.data(),

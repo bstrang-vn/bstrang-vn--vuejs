@@ -3,7 +3,12 @@
 	<div class="flex items-center mb-2">
 		<div class="flex-none w-20">Khách hàng</div>
 		<div class="w-3">:</div>
-		<div class="font-bold">{{ exportNote.customer?.customerName }}</div>
+		<div
+			class="font-bold cursor-pointer"
+			@click="$router.push({ name: 'Customer Details', params: { id: exportNote.customer?.customerID } })"
+		>
+			{{ exportNote.customer?.customerName }}
+		</div>
 	</div>
 	<div class="flex items-center mb-2">
 		<div class="flex-none w-20">Status</div>

@@ -14,27 +14,16 @@ const routes = [
 	{
 		path: '/',
 		name: 'Home',
-		redirect: { name: 'Goods List' },
+		redirect: { name: 'Dashboard' },
 	},
 	{
 		path: '/dashboard',
-		name: 'Dashboard',
 		meta: {
 			breadcrumbName: 'Dashboard',
 		},
-		component: () =>
-			import(/* webpackChunkName: "dashboard" */ '../layouts/dashboard-layout/Dashboard.vue'),
+		component: () => import(/* webpackChunkName: "dashboard" */ '../layouts/dashboard-layout/Dashboard.vue'),
 		beforeEnter: requireAuth,
 		children: dashboardChildren,
-	},
-	{
-		path: '/store',
-		name: 'Store',
-		meta: {
-			breadcrumbName: 'Store',
-		},
-		component: () =>
-			import(/* webpackChunkName: "dashboard" */ '../layouts/dashboard-layout/Dashboard.vue'),
 	},
 	{
 		path: '/register',

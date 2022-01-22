@@ -17,7 +17,6 @@
 					<th>Ship</th>
 					<th>T.Toán</th>
 					<th>Tổng</th>
-					<th>Nợ</th>
 					<th>Ngày</th>
 				</tr>
 			</thead>
@@ -36,9 +35,6 @@
 					<td class="text-left">{{ note.shipping.unit }}</td>
 					<td class="text-left">{{ note.payment.method }}</td>
 					<td>{{ note.finance.revenue }}</td>
-					<td :style="(note.status === 'Success') & (note.finance.debt > 0) ? 'color: red' : ''">
-						{{ note.finance.debt }}
-					</td>
 					<td>{{ formatDateTime(note.createdAt) }}</td>
 				</tr>
 			</tbody>
@@ -85,7 +81,7 @@
 		Tổng Nợ :
 		<span class="font-bold">{{ formatNumber(totalDebt) }}</span>
 	</div>
-	<h1 class="title-content mt-10">Đơn hàng 10 ngày gần nhất</h1>
+	<h1 class="title-content mt-10">Đơn hàng hoàn thành</h1>
 	<div class="flex mb-2">
 		<div class="input-text">
 			<input :value="searchText" @input="handleSearchText" type="text" placeholder="Search..." />
@@ -100,7 +96,6 @@
 					<th>Ship</th>
 					<th>T.Toán</th>
 					<th>Tổng</th>
-					<th>Nợ</th>
 					<th>Ngày</th>
 				</tr>
 			</thead>
@@ -119,9 +114,6 @@
 					<td class="text-left">{{ note.shipping.unit }}</td>
 					<td class="text-left">{{ note.payment.method }}</td>
 					<td>{{ note.finance.revenue }}</td>
-					<td :style="(note.status === 'Success') & (note.finance.debt > 0) ? 'color: red' : ''">
-						{{ note.finance.debt }}
-					</td>
 					<td>{{ formatDateTime(note.createdAt) }}</td>
 				</tr>
 			</tbody>
@@ -151,7 +143,12 @@ export default {
 	},
 	computed: {
 		exportNoteFilter() {
-			return this.exportNoteArray.filter(note => MySearch(note.customer.customerName, this.searchText))
+			return this.exportNoteArray.filter(note => {
+				const isNotDebt = note.finance.debt === 0
+				const isSuccess = note.status === 'Success'
+				const searchOk = MySearch(note.customer.customerName, this.searchText)
+                return isNotDebt && isSuccess && searchOk
+			})
 		},
 		totalDebt() {
 			return this.exportNoteDebt.reduce((acc, note) => acc + note.finance.debt, 0)

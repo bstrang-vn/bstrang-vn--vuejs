@@ -1,4 +1,12 @@
 const dashboardChildren = [
+    {
+		path: './',
+		name: 'Dashboard',
+		meta: {
+			breadcrumbName: '',
+		},
+		component: () => import('@/components/home/Statistics.vue'),
+	},
 	{
 		path: 'warehouse',
 		name: 'Warehouse',
@@ -146,14 +154,6 @@ const dashboardChildren = [
 				component: () => import('@/components/export-note/export-note-details/ExportNoteDetails.vue'),
 			},
 		],
-	},
-	{
-		path: 'statistics',
-		name: 'Statistics',
-		meta: {
-			breadcrumbName: 'Statistics',
-		},
-		component: () => import('@/components/statistics/Statistics.vue'),
 	},
 	{
 		path: 'setting',

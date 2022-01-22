@@ -30,10 +30,6 @@
 			<TeamOutlined />
 			<span>Khách Hàng</span>
 		</a-menu-item>
-		<a-menu-item key="Statistics">
-			<AreaChartOutlined />
-			<span>Thống Kê</span>
-		</a-menu-item>
 	</a-menu>
 </template>
 
