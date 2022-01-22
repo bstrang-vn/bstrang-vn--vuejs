@@ -1,6 +1,6 @@
 <template>
 	<h1 class="title-content">
-		{{ $route.params.mode === 'create' ? 'Tạo đơn hàng' : '' }}
+		{{ $route.params.mode === 'create' || !$route.params.mode ? 'Tạo đơn hàng' : '' }}
 		{{ $route.params.mode === 'edit' ? 'Sửa đơn hàng' : '' }}
 		{{ $route.params.mode === 'copy' ? 'Copy đơn hàng' : '' }}
 	</h1>

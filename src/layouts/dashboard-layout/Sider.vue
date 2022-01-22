@@ -1,11 +1,6 @@
 <template>
 	<div class="logo" />
-	<a-menu
-		theme="dark"
-		mode="inline"
-		v-model:selectedKeys="selectedMenuKeys"
-		@click="handleMenuClick"
-	>
+	<a-menu theme="dark" mode="inline" v-model:selectedKeys="selectedMenuKeys" @click="handleMenuClick">
 		<a-menu-item key="Dashboard">
 			<AppstoreOutlined />
 			<span>Home</span>
@@ -18,10 +13,15 @@
 			<ShoppingCartOutlined />
 			<span>Phiếu Nhập Hàng</span>
 		</a-menu-item>
-		<a-menu-item key="ExportNote List">
-			<FormOutlined />
-			<span>Đơn Hàng</span>
-		</a-menu-item>
+		<a-sub-menu>
+			<template #icon>
+				<ScheduleOutlined />
+			</template>
+			<template #title>Đơn hàng</template>
+			<a-menu-item key="ExportNote Pending">Đơn hàng xử lý</a-menu-item>
+			<a-menu-item key="ExportNote List">Danh sách theo tháng</a-menu-item>
+			<a-menu-item key="ExportNote Create Modify">Tạo đơn hàng mới</a-menu-item>
+		</a-sub-menu>
 		<a-menu-item key="Provider List">
 			<ApartmentOutlined />
 			<span>Nhà Cung Cấp</span>
@@ -39,10 +39,9 @@ import {
 	AppstoreOutlined,
 	ShopOutlined,
 	ShoppingCartOutlined,
-	FormOutlined,
+	ScheduleOutlined,
 	ApartmentOutlined,
 	TeamOutlined,
-	AreaChartOutlined,
 } from '@ant-design/icons-vue'
 
 export default {
@@ -50,10 +49,9 @@ export default {
 		AppstoreOutlined,
 		ShopOutlined,
 		ShoppingCartOutlined,
-		FormOutlined,
+		ScheduleOutlined,
 		ApartmentOutlined,
 		TeamOutlined,
-		AreaChartOutlined,
 	},
 	setup() {
 		return { selectedMenuKeys: ref(['']) }

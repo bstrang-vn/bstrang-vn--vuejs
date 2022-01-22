@@ -1,5 +1,5 @@
 const dashboardChildren = [
-    {
+	{
 		path: './',
 		name: 'Dashboard',
 		meta: {
@@ -129,7 +129,15 @@ const dashboardChildren = [
 		component: () => import('@/components/export-note/ExportNote.vue'),
 		children: [
 			{
-				path: '',
+				path: 'pending',
+				name: 'ExportNote Pending',
+				meta: {
+					breadcrumbName: 'Pending',
+				},
+				component: () => import('@/components/export-note/export-note-list/ExportNotePending.vue'),
+			},
+			{
+				path: 'list',
 				name: 'ExportNote List',
 				meta: {
 					breadcrumbName: 'List',
